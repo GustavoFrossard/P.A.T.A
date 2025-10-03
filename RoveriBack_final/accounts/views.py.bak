@@ -1,0 +1,87 @@
+from rest_framework import generics, status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from django.contrib.auth import get_user_model
+from .serializers import RegisterSerializer, UserSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.views import APIView
+
+User = get_user_model()
+
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [AllowAny]
+    serializer_class = RegisterSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        response_data = {
+            "user": UserSerializer(user, context={"request": request}).data,
+            "access": access_token,
+            "refresh": refresh_token,
+        }
+        response = Response(response_data, status=status.HTTP_201_CREATED)
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            samesite="Lax",
+            secure=False,
+            max_age=60*60,
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            samesite="Lax",
+            secure=False,
+            max_age=7*24*60*60,
+        )
+        return response
+
+
+class CookieTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        return super().get_token(user)
+
+class CookieTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CookieTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        resp = super().post(request, *args, **kwargs)
+        access = resp.data.get('access')
+        refresh = resp.data.get('refresh')
+        data = {}
+        if access:
+            data['access'] = access
+        if refresh:
+            data['refresh'] = refresh
+        response = Response({'detail': 'Login OK', **data}, status=resp.status_code)
+        if access:
+            response.set_cookie('access_token', access, httponly=True, samesite='Lax', secure=False, max_age=60*60)
+        if refresh:
+            response.set_cookie('refresh_token', refresh, httponly=True, samesite='Lax', secure=False, max_age=7*24*60*60)
+        return response
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        response = Response({'detail':'Logged out'}, status=status.HTTP_200_OK)
+        response.delete_cookie('access_token')
+        response.delete_cookie('refresh_token')
+        return response
+
+class UserDetailView(generics.RetrieveAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+    def get_object(self):
+        return self.request.user

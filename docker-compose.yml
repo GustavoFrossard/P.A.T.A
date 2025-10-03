@@ -1,0 +1,51 @@
+services:
+  backend:
+    build:
+      context: ./RoveriBack_final   # ⬅️ Nome certo
+    container_name: roveri_backend
+    command: >
+      sh -c "python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./RoveriBack_final:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_DB=roveri_db
+      - POSTGRES_USER=roveri_user
+      - POSTGRES_PASSWORD=roveri_pass
+      - DB_HOST=db
+      - DB_PORT=5432
+
+  frontend:
+    build:
+      context: ./Roveri_final
+    container_name: roveri_frontend
+    volumes:
+      - ./Roveri_final:/app:cached
+      - /app/node_modules  # 🔥 mantém os node_modules do container
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://backend:8000/api
+
+
+  db:
+    image: postgres:15
+    container_name: roveri_db
+    restart: always
+    environment:
+      POSTGRES_DB: roveri_db
+      POSTGRES_USER: roveri_user
+      POSTGRES_PASSWORD: roveri_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
