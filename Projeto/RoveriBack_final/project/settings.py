@@ -145,10 +145,13 @@ CLOUDINARY_STORAGE = {
 print(f"DEBUG: CLOUDINARY_CLOUD_NAME = {os.environ.get('CLOUDINARY_CLOUD_NAME', 'NOT SET')}")
 print(f"DEBUG: DEFAULT_FILE_STORAGE will be = {'cloudinary_storage.storage.MediaCloudinaryStorage' if os.environ.get('CLOUDINARY_CLOUD_NAME') else 'FileSystemStorage'}")
 
-# Use Cloudinary for media files if configured (production), else use local storage
-if os.environ.get('CLOUDINARY_CLOUD_NAME'):
+# Always use Cloudinary on Vercel (serverless can't use filesystem)
+if os.environ.get('VERCEL'):
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    MEDIA_URL = '/media/'  # Cloudinary handles the actual URL
+    MEDIA_URL = '/media/'
+elif os.environ.get('CLOUDINARY_CLOUD_NAME'):
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    MEDIA_URL = '/media/'
 else:
     # Local development: use disk storage
     MEDIA_URL = "/media/"
