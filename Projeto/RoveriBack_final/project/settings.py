@@ -4,9 +4,9 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "dev-secret-key"
-DEBUG = True
-ALLOWED_HOSTS = ["*"]
+SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
+DEBUG = os.environ.get("DEBUG", "True").lower() in ["1", "true", "yes"]
+ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "*").split(",") if h]
 
 # Apps instalados
 INSTALLED_APPS = [
@@ -126,8 +126,9 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
+# In Render, use a disk (MEDIA_ROOT) for uploads; default to project media folder locally
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -160,6 +161,10 @@ CORS_ALLOWED_ORIGINS = [
 	"http://127.0.0.1:5173",
 	"http://localhost:3000",
 ]
+# Allow extra CORS origins via env var (comma-separated)
+extra_cors = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+if extra_cors:
+	CORS_ALLOWED_ORIGINS += [o for o in extra_cors.split(",") if o]
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF (para confiar no frontend)
@@ -168,17 +173,23 @@ CSRF_TRUSTED_ORIGINS = [
 	"http://127.0.0.1:5173",
 	"http://localhost:3000",
 ]
+# Allow extra CSRF trusted origins via env var (comma-separated, include scheme https://)
+extra_csrf = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
+if extra_csrf:
+	CSRF_TRUSTED_ORIGINS += [o for o in extra_csrf.split(",") if o]
 
 # Cookies de sessão / CSRF (em dev pode ficar False)
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False  # precisa estar False para o frontend ler o token CSRF
 ASGI_APPLICATION = "project.asgi.application"
+# Use REDIS_URL for channels if provided (Render), else default to docker hostname
+_redis_url = os.environ.get('REDIS_URL')
 CHANNEL_LAYERS = {
-		"default": {
-			"BACKEND": "channels_redis.core.RedisChannelLayer",
-			"CONFIG": {
-				"hosts": [("redis", 6379)],
-			},
-	},
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [_redis_url if _redis_url else ("redis", 6379)],
+        },
+    },
 }

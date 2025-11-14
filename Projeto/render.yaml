@@ -1,0 +1,57 @@
+services:
+  - type: web
+    name: roveri-backend
+    env: python
+    rootDir: RoveriBack_final
+    buildCommand: pip install -r requirements.txt
+    startCommand: daphne -b 0.0.0.0 -p $PORT project.asgi:application
+    autoDeploy: true
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: DJANGO_SETTINGS_MODULE
+        value: project.settings
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: REDIS_URL
+        fromService:
+          name: roveri-redis
+          type: redis
+          property: connectionString
+      - key: DATABASE_URL
+        fromService:
+          name: roveri-db
+          type: postgres
+          property: connectionString
+      - key: MEDIA_ROOT
+        value: /var/media
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://roveri-frontend.onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://roveri-frontend.onrender.com"
+    disk:
+      name: media-disk
+      mountPath: /var/media
+      sizeGB: 1
+    postdeploy:
+      - python manage.py migrate
+
+  - type: static
+    name: roveri-frontend
+    rootDir: Roveri_final
+    buildCommand: npm ci && npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: "https://roveri-backend.onrender.com/api"
+
+databases:
+  - name: roveri-db
+    plan: free
+
+redis:
+  - name: roveri-redis
+    plan: free
