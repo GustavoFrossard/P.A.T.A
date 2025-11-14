@@ -39,17 +39,13 @@ const Home = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Buscar usuários e pets e calcular as métricas localmente
-        const [usersRes, petsRes] = await Promise.all([api.get("users/"), api.get("pets/")]);
-
-        const usersData = Array.isArray(usersRes.data) ? usersRes.data : usersRes.data?.results || [];
-        const petsData = Array.isArray(petsRes.data) ? petsRes.data : petsRes.data?.results || [];
-
-        const petsAdotados = petsData.filter((p) => p.is_published === false).length;
-        const usuariosAtivos = usersData.filter((u) => u.is_active).length;
-        const cidadesAtendidas = Array.from(new Set(petsData.map((p) => p.city || p.location).filter(Boolean))).length;
-
-        setStats({ petsAdotados, usuariosAtivos, cidadesAtendidas });
+        // Busca estatísticas do endpoint público
+        const res = await api.get("pets/stats/");
+        setStats({
+          petsAdotados: res.data.petsAdotados || 0,
+          usuariosAtivos: res.data.usuariosAtivos || 0,
+          cidadesAtendidas: res.data.cidadesAtendidas || 0,
+        });
       } catch (err) {
         console.error("Erro ao buscar estatísticas:", err.response?.data || err);
       }
