@@ -40,7 +40,7 @@ const Home = () => {
     const fetchStats = async () => {
       try {
         // Busca estatísticas do endpoint público
-        const res = await api.get("pets/stats/");
+        const res = await api.get("stats/");
         setStats({
           petsAdotados: res.data.petsAdotados || 0,
           usuariosAtivos: res.data.usuariosAtivos || 0,
