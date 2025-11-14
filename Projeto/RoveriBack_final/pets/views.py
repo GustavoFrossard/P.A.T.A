@@ -62,8 +62,11 @@ class StatsView(APIView):
         if data is not None:
             return Response(data)
 
-        pets_adotados = PetCard.objects.filter(is_published=True).count()
-        usuarios_ativos = User.objects.count()
+        # Pets adotados = is_published False (não estão mais disponíveis)
+        pets_adotados = PetCard.objects.filter(is_published=False).count()
+        # Usuários ativos = is_active True
+        usuarios_ativos = User.objects.filter(is_active=True).count()
+        # Cidades com pets (qualquer pet)
         cidades_atendidas = PetCard.objects.values("city").distinct().count()
 
         data = {
