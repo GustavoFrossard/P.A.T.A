@@ -5,24 +5,14 @@ import { useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Send, ArrowLeft, Phone, Video, MoreVertical } from "lucide-react";
 import api from "../services/api";
-
-const getToken = () => {
-  try {
-    // Look for the token names the app stores: accessToken (AuthContext), refreshToken, or legacy names
-    const t = localStorage.getItem("accessToken") || localStorage.getItem("access_token") || localStorage.getItem("token");
-    if (t) return t;
-  } catch (e) {
-    /* ignore */
-  }
-  const m = document.cookie.match(/(?:^|; )token=([^;]+)/);
-  return m ? m[1] : null;
-};
+import Pusher from "pusher-js";
 
 const Chat = () => {
   const { user } = useAuth();
   const location = useLocation();
   const messagesEndRef = useRef(null);
-  const wsRef = useRef(null);
+  const pusherRef = useRef(null);
+  const channelRef = useRef(null);
 
   const [rooms, setRooms] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
@@ -36,76 +26,63 @@ const Chat = () => {
   }, []);
 
   useEffect(() => {
-    if (wsRef.current) { try { wsRef.current.close(); } catch {} wsRef.current = null; }
-    if (!activeRoom) { setMessages([]); return; }
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-
-    // Prefer an explicit API URL from Vite env (VITE_API_URL). If not provided,
-    // fall back to localhost:8000 for backend during development.
-    let backendHost = window.location.hostname;
-    let backendPort = "";
-    try {
-      const apiUrl = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) || null;
-      if (apiUrl) {
-        const parsed = new URL(apiUrl);
-        backendHost = parsed.hostname || backendHost;
-        backendPort = parsed.port || (parsed.protocol === "https:" ? "443" : parsed.protocol === "http:" ? "80" : "");
-      } else {
-        // default dev backend port
-        backendPort = backendHost === "localhost" ? "8000" : (window.location.port || "");
-      }
-    } catch (e) {
-      backendPort = backendHost === "localhost" ? "8000" : (window.location.port || "");
+    // Unsubscribe from previous channel
+    if (channelRef.current) {
+      try { channelRef.current.unbind_all(); channelRef.current.unsubscribe(); } catch {}
+      channelRef.current = null;
     }
-
-    const token = getToken();
-    const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
-    const wsUrl = backendPort
-      ? `${protocol}://${backendHost}:${backendPort}/ws/chat/${activeRoom.id}/${tokenQuery}`
-      : `${protocol}://${backendHost}/ws/chat/${activeRoom.id}/${tokenQuery}`;
-    const ws = new WebSocket(wsUrl); wsRef.current = ws;
-    ws.onopen = () => { (async () => { try { const res = await api.get(`chat/rooms/${activeRoom.id}/messages/`); setMessages(res.data.results || res.data); } catch (err) { console.error(err); } })(); };
-    ws.onmessage = (event) => {
+    
+    if (!activeRoom) { setMessages([]); return; }
+    
+    // Initialize Pusher client once
+    if (!pusherRef.current) {
+      pusherRef.current = new Pusher('0357e20ea82b15548953', {
+        cluster: 'us2',
+      });
+    }
+    
+    // Load existing messages
+    (async () => {
       try {
-        const data = JSON.parse(event.data);
-        // ignore ack messages (sent back to sender) or errors
-        if (data && (data.saved || data.error)) return;
-
-        setMessages((prev) => {
-          // avoid duplicating messages that may already be present (same id)
-          try {
-            if (data.id && prev.some((m) => m.id === data.id)) return prev;
-          } catch (e) {
-            // ignore and append
-          }
-          return [...prev, data];
-        });
+        const res = await api.get(`chat/rooms/${activeRoom.id}/messages/`);
+        setMessages(res.data.results || res.data);
       } catch (err) {
-        console.error(err, event.data);
+        console.error(err);
+      }
+    })();
+    
+    // Subscribe to room-specific channel
+    const channel = pusherRef.current.subscribe(`chat-room-${activeRoom.id}`);
+    channelRef.current = channel;
+    
+    // Listen for new messages
+    channel.bind('new-message', (data) => {
+      setMessages((prev) => {
+        // Avoid duplicates
+        if (data.id && prev.some((m) => m.id === data.id)) return prev;
+        return [...prev, data];
+      });
+    });
+    
+    return () => {
+      if (channelRef.current) {
+        try { channelRef.current.unbind_all(); channelRef.current.unsubscribe(); } catch {}
+        channelRef.current = null;
       }
     };
-    ws.onerror = (err) => { console.error("WS erro", err); };
-    ws.onclose = (e) => { console.log("WS fechado", e.code, e.reason); };
-    return () => { try { ws.close(); } catch {} wsRef.current = null; };
   }, [activeRoom]);
 
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() || !activeRoom) return;
-    const payload = { type: "message", content: text };
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      try { wsRef.current.send(JSON.stringify(payload)); setText(""); } catch (err) { try { const res = await api.post(`chat/rooms/${activeRoom.id}/messages/`, { content: text }); setMessages((prev) => [...prev, res.data]); setText(""); } catch (e) { console.error(e); } }
-    } else {
-      try {
-        const res = await api.post(`chat/rooms/${activeRoom.id}/messages/`, { content: text });
-        console.log('POST message response', res.status, res.data);
-        setMessages((prev) => [...prev, res.data]);
-        setText("");
-      } catch (err) {
-        console.error('Failed to POST message', err?.response || err.message || err);
-        // show a quick alert to help debugging
-        alert('Erro ao enviar mensagem: ' + (err?.response?.statusText || JSON.stringify(err?.response?.data) || err.message));
-      }
+    
+    try {
+      const res = await api.post(`chat/rooms/${activeRoom.id}/messages/`, { content: text });
+      // Message will be added via Pusher event, but add optimistically if needed
+      setText("");
+    } catch (err) {
+      console.error('Failed to POST message', err?.response || err.message || err);
+      alert('Erro ao enviar mensagem: ' + (err?.response?.statusText || JSON.stringify(err?.response?.data) || err.message));
     }
   };
 

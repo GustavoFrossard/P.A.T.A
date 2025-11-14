@@ -7,6 +7,8 @@ from pets.models import PetCard
 from .serializers import ChatRoomSerializer, MessageSerializer
 from rest_framework.views import APIView
 from django.core.cache import cache
+import os
+import pusher
 
 
 class ChatRoomListCreateView(generics.ListCreateAPIView):
@@ -119,6 +121,30 @@ class MessageListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         # save and update/invalidate cache for this room
         msg = serializer.save(sender=self.request.user, room_id=self.kwargs["room_id"])
+        
+        # Trigger Pusher event for real-time notification
+        try:
+            pusher_client = pusher.Pusher(
+                app_id=os.environ.get('PUSHER_APP_ID'),
+                key=os.environ.get('PUSHER_KEY'),
+                secret=os.environ.get('PUSHER_SECRET'),
+                cluster=os.environ.get('PUSHER_CLUSTER'),
+                ssl=True
+            )
+            
+            # Serialize message for pusher
+            msg_data = self.get_serializer(msg).data
+            
+            # Trigger event on room-specific channel
+            pusher_client.trigger(
+                f'chat-room-{self.kwargs["room_id"]}',
+                'new-message',
+                msg_data
+            )
+        except Exception as e:
+            # Log error but don't fail the request
+            print(f"Pusher error: {e}")
+        
         cache_key = f"chat_room_{self.kwargs['room_id']}_messages_v1"
         try:
             cached = cache.get(cache_key)
