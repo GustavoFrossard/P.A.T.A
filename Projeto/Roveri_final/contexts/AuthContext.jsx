@@ -41,8 +41,13 @@ export const AuthProvider = ({ children }) => {
       // keep any existing user while we validate (prevents immediate redirect on transient network errors)
       setNetworkOffline(false);
 
+      console.log('🔐 Validando sessão...');
+      console.log('🍪 Cookies disponíveis:', document.cookie);
+      console.log('👤 Usuário no localStorage:', initialUser ? 'Sim' : 'Não');
+
       try {
         const res = await api.get("accounts/user/");
+        console.log('✅ Usuário validado com sucesso:', res.data);
         setUser(res.data);
         // ensure stored user is in sync
         try {
@@ -89,7 +94,13 @@ export const AuthProvider = ({ children }) => {
   const login = async ({ email, password }) => {
     setLoading(true);
     try {
+      console.log('🔐 Tentando fazer login...');
+      console.log('🍪 Cookies antes do login:', document.cookie);
+      
       const res = await api.post("accounts/login/", { email, password });
+
+      console.log('✅ Login bem-sucedido:', res.data);
+      console.log('🍪 Cookies após login:', document.cookie);
 
       // persist full response for debugging
       try {
@@ -105,7 +116,9 @@ export const AuthProvider = ({ children }) => {
 
       // Fallback: se por algum motivo não tiver user no response, busca
       try {
+        console.log('⚠️ User não veio no response, buscando...');
         const userRes = await api.get("accounts/user/");
+        console.log('✅ User obtido:', userRes.data);
         setUser(userRes.data);
       } catch (errUser) {
         // save the error for debugging but don't clear tokens here
@@ -172,12 +185,16 @@ export const AuthProvider = ({ children }) => {
 
   // 🔒 Logout
   const logout = async () => {
+    console.log('🚪 Fazendo logout...');
+    console.log('🍪 Cookies antes do logout:', document.cookie);
+    
     try {
       // Tell backend to clear auth cookies
       await api.post("accounts/logout/");
+      console.log('✅ Logout no backend bem-sucedido');
     } catch (e) {
       // ignore errors from the API call, but continue to clear local state
-      console.warn('Logout request failed, clearing local session anyway', e);
+      console.warn('⚠️ Logout request failed, clearing local session anyway', e);
     }
 
     // Clear all local auth artifacts so a page reload doesn't re-authenticate
@@ -189,6 +206,8 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       /* ignore storage errors */
     }
+    
+    console.log('🍪 Cookies após logout:', document.cookie);
     // Optional: Force a small navigation change so UI reacts immediately
     // window.location.href = '/';
   };

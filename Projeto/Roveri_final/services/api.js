@@ -16,10 +16,27 @@ function getCookie(name) {
   return null;
 }
 
+// Debug helper - log all cookies
+function logAllCookies() {
+  console.log('🍪 Todos os cookies:', document.cookie || 'Nenhum cookie encontrado');
+  console.log('🍪 access_token:', getCookie('access_token') || 'Ausente');
+  console.log('🍪 refresh_token:', getCookie('refresh_token') || 'Ausente');
+  console.log('🍪 csrftoken:', getCookie('csrftoken') || 'Ausente');
+}
+
+// Export debug helper
+window.debugCookies = logAllCookies;
+
 // Request interceptor -> add CSRF token to headers
 api.interceptors.request.use(
   (config) => {
     const csrfToken = getCookie('csrftoken');
+    const accessToken = getCookie('access_token');
+    
+    console.log(`📤 Request para: ${config.baseURL}${config.url}`);
+    console.log('🍪 CSRF Token:', csrfToken ? 'Presente' : 'Ausente');
+    console.log('🍪 Access Token:', accessToken ? 'Presente' : 'Ausente');
+    
     if (csrfToken) {
       config.headers['X-CSRFToken'] = csrfToken;
     }
@@ -36,15 +53,35 @@ api.interceptors.response.use(
 
     if (error.response && error.response.status === 401 && !original._retry) {
       original._retry = true;
+      
+      console.log('🔄 Token expirado, tentando refresh...');
+      console.log('🍪 Cookies atuais:', document.cookie);
+      
       try {
         // Ask the backend to refresh using cookie (backend reads refresh_token cookie)
-        await axios.post("https://pata2.vercel.app/api/token/refresh/", {}, { withCredentials: true });
+        // Use the configured baseURL instead of hardcoded URL
+        const refreshResponse = await api.post("token/refresh/", {}, { 
+          withCredentials: true,
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken') || ''
+          }
+        });
+        
+        console.log('✅ Refresh bem-sucedido:', refreshResponse.data);
+        console.log('🍪 Cookies após refresh:', document.cookie);
         
         // Backend sets new access_token cookie, retry original request
         return api(original);
-      } catch (e) {
+      } catch (refreshError) {
         // refresh failed -> let the app's auth handling react
-        return Promise.reject(e);
+        console.error('❌ Falha no refresh:', refreshError);
+        console.log('🍪 Cookies após falha:', document.cookie);
+        
+        // Clear any invalid cookies
+        document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        
+        return Promise.reject(refreshError);
       }
     }
 
