@@ -8,6 +8,10 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
 DEBUG = os.environ.get("DEBUG", "True").lower() in ["1", "true", "yes"]
 ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "*").split(",") if h]
 
+# Vercel configurations
+if os.environ.get("VERCEL"):
+    ALLOWED_HOSTS += ['.vercel.app', '.now.sh']
+
 # Apps instalados
 INSTALLED_APPS = [
 	"channels",
@@ -126,6 +130,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles_build" / "static"
+
 # In Render, use a disk (MEDIA_ROOT) for uploads; default to project media folder locally
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
