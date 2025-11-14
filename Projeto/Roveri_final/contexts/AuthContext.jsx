@@ -96,9 +96,14 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("auth_last_response", JSON.stringify(res.data));
       } catch {}
 
-      // Backend sets HttpOnly cookies with tokens (cross-origin via SameSite=None; Secure=true)
+      // Backend retorna user no response E seta cookies
+      // Usa os dados do usuário que já vieram no response
+      if (res.data.user) {
+        setUser(res.data.user);
+        return { ok: true };
+      }
 
-      // depois do login, pega dados do usuário
+      // Fallback: se por algum motivo não tiver user no response, busca
       try {
         const userRes = await api.get("accounts/user/");
         setUser(userRes.data);
@@ -112,6 +117,8 @@ export const AuthProvider = ({ children }) => {
           };
           localStorage.setItem("auth_last_error", JSON.stringify(errObj));
         } catch {}
+        
+        return { ok: false, error: "Falha ao carregar dados do usuário" };
       }
 
       return { ok: true };
