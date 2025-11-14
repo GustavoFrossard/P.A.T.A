@@ -21,16 +21,10 @@ services:
           name: roveri-db
           type: pserv
           property: connectionString
-      - key: MEDIA_ROOT
-        value: /var/media
       - key: CORS_ALLOWED_ORIGINS
         value: "https://roveri-frontend.onrender.com"
       - key: CSRF_TRUSTED_ORIGINS
         value: "https://roveri-frontend.onrender.com"
-    disk:
-      name: media-disk
-      mountPath: /var/media
-      sizeGB: 1
 
   - type: web
     name: roveri-frontend
