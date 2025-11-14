@@ -205,10 +205,13 @@ extra_csrf = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
 if extra_csrf:
 	CSRF_TRUSTED_ORIGINS += [o for o in extra_csrf.split(",") if o]
 
-# Cookies de sessão / CSRF (em dev pode ficar False)
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+# Cookies de sessão / CSRF
+# Force Secure cookies in production (Vercel)
+SESSION_COOKIE_SECURE = True  # Always use HTTPS cookies
+CSRF_COOKIE_SECURE = True  # Always use HTTPS cookies
 CSRF_COOKIE_HTTPONLY = False  # precisa estar False para o frontend ler o token CSRF
+SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-origin cookies
+CSRF_COOKIE_SAMESITE = 'None'  # Allow cross-origin cookies
 ASGI_APPLICATION = "project.asgi.application"
 # Use REDIS_URL for channels if provided (Render), else default to docker hostname
 _redis_url = os.environ.get('REDIS_URL')
