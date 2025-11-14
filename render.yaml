@@ -39,11 +39,12 @@ services:
     postdeploy:
       - python manage.py migrate
 
-  - type: static
+  - type: web
     name: roveri-frontend
+    env: static
     rootDir: Projeto/Roveri_final
     buildCommand: npm ci && npm run build
-    publishPath: dist
+    staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
         value: "https://roveri-backend.onrender.com/api"
