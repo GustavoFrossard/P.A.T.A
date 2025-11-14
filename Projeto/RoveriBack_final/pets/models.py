@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from cloudinary_storage.storage import MediaCloudinaryStorage
+
 User = get_user_model()
+
 class PetCard(models.Model):
     SPECIES_CHOICES = (('dog','Dog'),('cat','Cat'))
     name = models.CharField(max_length=120)
@@ -8,7 +11,7 @@ class PetCard(models.Model):
     breed = models.CharField(max_length=120, blank=True)
     age_text = models.CharField(max_length=60, blank=True)
     description = models.TextField(blank=True)
-    image = models.ImageField(upload_to='pets/', blank=True, null=True)
+    image = models.ImageField(upload_to='pets/', blank=True, null=True, storage=MediaCloudinaryStorage())
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='petcards')
     is_published = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
