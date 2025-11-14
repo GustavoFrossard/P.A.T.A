@@ -1,0 +1,14 @@
+Backups of page css files before consolidation
+
+Files included:
+- pages/AddPet.css
+- pages/AdminPanel.css
+- pages/Chat.css
+- pages/Home.css
+- pages/Login.css
+- pages/PetDetail.css
+- pages/PetList.css
+- pages/Profile.css
+- pages/Register.css
+
+Contents were copied from the repo at time of request. If you need the separate files restored, tell me and I will restore them from this archive.

@@ -1,4 +1,3 @@
-import "./AddPet.css";
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -60,16 +59,15 @@ const AddPet = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Adicionar Pet para Adoção</h1>
       <div className="max-w-2xl mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6"
         >
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            Adicionar Pet para Adoção
-          </h1>
+          {/* heading moved above to match Pets page layout */}
 
           {error && (
             <div className="mb-4 p-3 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">

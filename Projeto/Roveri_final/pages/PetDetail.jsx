@@ -1,5 +1,5 @@
-import "./PetDetail.css";
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -17,6 +17,7 @@ const PetDetail = () => {
   const navigate = useNavigate();
   const [pet, setPet] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const { user } = useAuth();
 
   // Carregar detalhes do pet
   useEffect(() => {
@@ -31,6 +32,21 @@ const PetDetail = () => {
     };
     fetchPet();
   }, [id]);
+
+  // Verificar se o pet está nos favoritos
+  useEffect(() => {
+    const checkFavorite = async () => {
+      if (!user) return;
+      try {
+        const res = await api.get("favorites/");
+        const isFav = res.data.some(favPet => favPet.id === parseInt(id));
+        setIsFavorite(isFav);
+      } catch (err) {
+        console.error("Erro ao verificar favorito:", err);
+      }
+    };
+    checkFavorite();
+  }, [id, user]);
 
   // Criar ou recuperar sala de chat
   const handleContact = async () => {
@@ -50,8 +66,24 @@ const PetDetail = () => {
     }
   };
 
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
+  const toggleFavorite = async () => {
+    if (!user) {
+      alert("Você precisa estar logado para favoritar pets");
+      return;
+    }
+
+    try {
+      if (isFavorite) {
+        await api.delete(`favorites/${id}/`);
+        setIsFavorite(false);
+      } else {
+        await api.post("favorites/", { pet: parseInt(id) });
+        setIsFavorite(true);
+      }
+    } catch (err) {
+      console.error("Erro ao atualizar favorito:", err);
+      alert("Erro ao atualizar favorito. Tente novamente.");
+    }
   };
 
   if (!pet) {
@@ -183,13 +215,39 @@ const PetDetail = () => {
             </div>
 
             {/* Botão de contato */}
-            <button
-              onClick={handleContact}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
-            >
-              <MessageCircle className="w-5 h-5" />
-              <span>Entrar em Contato</span>
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={handleContact}
+                disabled={pet.is_published === false}
+                className={`w-full py-3 px-6 rounded-lg flex items-center justify-center space-x-2 transition-colors ${pet.is_published === false ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span>Entrar em Contato</span>
+              </button>
+
+              {/* Botão 'Adotado' apenas para o proprietário do anúncio */}
+              {(user && user.id === pet.created_by) && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await api.post(`pets/${pet.id}/mark_registered/`);
+                      // update local pet state with returned data (backend returns the pet)
+                      if (res && res.data) {
+                        setPet(res.data);
+                      } else {
+                        setPet((p) => ({ ...p, is_published: false }));
+                      }
+                    } catch (err) {
+                      console.error("Erro ao marcar pet como adotado:", err);
+                    }
+                  }}
+                  disabled={pet.is_published === false}
+                  className={`w-full py-3 px-6 rounded-lg flex items-center justify-center space-x-2 transition-colors ${pet.is_published === false ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                >
+                  <span>{pet.is_published === false ? 'Adotado' : 'Adotado'}</span>
+                </button>
+              )}
+            </div>
           </motion.div>
         </div>
 

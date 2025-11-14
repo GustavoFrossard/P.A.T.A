@@ -1,12 +1,25 @@
 import axios from "axios";
 
+const DEFAULT_BASE = "http://localhost:8000/api/";
+const apiBase = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || process.env.REACT_APP_API_URL || DEFAULT_BASE;
+
 const api = axios.create({
-  baseURL: "http://localhost:8000/api/",
+  baseURL: apiBase,
   withCredentials: true, // ensures cookies are sent/received
 });
 
 // request interceptor (no-op, kept for extensibility)
 api.interceptors.request.use((config) => {
+  // attach Authorization header if access token is present in localStorage
+  try {
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("access_token") || localStorage.getItem("token");
+    if (token) {
+      if (!config.headers) config.headers = {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (e) {
+    // ignore
+  }
   return config;
 });
 
@@ -24,19 +37,23 @@ api.interceptors.response.use(
 
         const newAccess = resp.data.access;
         if (newAccess) {
-          // store temporarily so code that relies on header can use it
-          localStorage.setItem("accessToken", newAccess);
-          // set header for original request
+          // Do NOT persist refreshed access tokens in localStorage (prefer cookie-based auth).
+          // Set Authorization header only for the retried request.
           if (original.headers) original.headers.Authorization = `Bearer ${newAccess}`;
         }
 
         // retry original request
         return api(original);
       } catch (e) {
-        // refresh failed -> clear storage and send to login
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
+        // refresh failed -> clear any stale tokens and reject; do not force a full-page redirect here.
+        try {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+        } catch (e) {
+          /* ignore */
+        }
+        // Let the app's auth handling react to the rejected response (avoid reload loops)
+        return Promise.reject(e);
       }
     }
 

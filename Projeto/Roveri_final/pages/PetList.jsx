@@ -1,4 +1,3 @@
-import "./PetList.css";
 // src/pages/PetList.jsx
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
@@ -7,13 +6,16 @@ import { Search, Filter, MapPin, Calendar, Heart } from "lucide-react";
 import { fadeInUp } from "../utils/motion";
 import { pets as mockPets } from "../utils/mockData";
 import api from "../services/api"; // ✅ usa o axios configurado
+import { useAuth } from "../contexts/AuthContext";
 
 const PetList = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedCity, setSelectedCity] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [pets, setPets] = useState([]);
+  const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -35,8 +37,11 @@ const PetList = () => {
           ? data.results
           : [];
 
+        console.log("ℹ️ items with is_published:", items.map(i => ({ id: i?.id, is_published: i?.is_published })))
+
         const adapted = items
-          .filter((item) => item && item.is_published) // só mostra publicados
+          // só mostra publicados (trata `undefined` como publicado para compatibilidade)
+          .filter((item) => item && (item.is_published === undefined || item.is_published))
           .map((item) => ({
             id: item.id,
             name: item.name,
@@ -62,6 +67,42 @@ const PetList = () => {
 
     fetchPets();
   }, []);
+
+  // Carregar favoritos do usuário
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!user) return;
+      try {
+        const res = await api.get("favorites/");
+        setFavorites(res.data.map(pet => pet.id));
+      } catch (err) {
+        console.error("Erro ao carregar favoritos:", err);
+      }
+    };
+    fetchFavorites();
+  }, [user]);
+
+  // Toggle favorito
+  const handleToggleFavorite = async (petId) => {
+    if (!user) {
+      alert("Você precisa estar logado para favoritar pets");
+      return;
+    }
+
+    const isFavorite = favorites.includes(petId);
+    try {
+      if (isFavorite) {
+        await api.delete(`favorites/${petId}/`);
+        setFavorites(prev => prev.filter(id => id !== petId));
+      } else {
+        await api.post("favorites/", { pet: petId });
+        setFavorites(prev => [...prev, petId]);
+      }
+    } catch (err) {
+      console.error("Erro ao atualizar favorito:", err);
+      alert("Erro ao atualizar favorito. Tente novamente.");
+    }
+  };
 
   const filteredPets = pets.filter((pet) => {
     const q = (searchTerm || "").trim().toLowerCase();
@@ -195,8 +236,20 @@ const PetList = () => {
               >
                 Ver detalhes
               </Link>
-              <button className="text-red-500 hover:text-red-600">
-                <Heart className="w-5 h-5" />
+              <button 
+                onClick={() => handleToggleFavorite(pet.id)}
+                className={`transition-colors ${
+                  favorites.includes(pet.id) 
+                    ? "text-red-500" 
+                    : "text-gray-400 hover:text-red-500"
+                }`}
+                disabled={!user}
+              >
+                <Heart 
+                  className={`w-5 h-5 ${
+                    favorites.includes(pet.id) ? "fill-current" : ""
+                  }`} 
+                />
               </button>
             </div>
           </motion.div>

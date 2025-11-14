@@ -1,4 +1,3 @@
-import "./Login.css";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -177,6 +176,8 @@ const Login = () => {
             </button>
           </div>
         </form>
+
+        {/* debug UI removed */}
       </motion.div>
     </div>
   );

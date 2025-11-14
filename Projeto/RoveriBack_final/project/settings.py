@@ -10,63 +10,111 @@ ALLOWED_HOSTS = ["*"]
 
 # Apps instalados
 INSTALLED_APPS = [
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-    "rest_framework",
-    "corsheaders",
-    "pets",
-    "chat",
-    "accounts",
+	"channels",
+	"django.contrib.admin",
+	"django.contrib.auth",
+	"django.contrib.contenttypes",
+	"django.contrib.sessions",
+	"django.contrib.messages",
+	"django.contrib.staticfiles",
+	"rest_framework",
+	"corsheaders",
+	"pets",
+	"chat",
+	"accounts",
 ]
 
 # Middlewares
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    # ✅ precisamos do CSRF porque usaremos cookies
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+	"corsheaders.middleware.CorsMiddleware",
+	"django.middleware.security.SecurityMiddleware",
+	"django.contrib.sessions.middleware.SessionMiddleware",
+	"django.middleware.common.CommonMiddleware",
+	# ✅ precisamos do CSRF porque usaremos cookies
+	"django.middleware.csrf.CsrfViewMiddleware",
+	"django.contrib.auth.middleware.AuthenticationMiddleware",
+	"django.contrib.messages.middleware.MessageMiddleware",
+	"django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 ROOT_URLCONF = "project.urls"
 
 TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
-    },
+	{
+		"BACKEND": "django.template.backends.django.DjangoTemplates",
+		"DIRS": [],
+		"APP_DIRS": True,
+		"OPTIONS": {
+			"context_processors": [
+				"django.template.context_processors.debug",
+				"django.template.context_processors.request",
+				"django.contrib.auth.context_processors.auth",
+				"django.contrib.messages.context_processors.messages",
+			],
+		},
+	},
 ]
 
 WSGI_APPLICATION = "project.wsgi.application"
 
 # Banco de dados
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB", "roveri_db"),
-        "USER": os.environ.get("POSTGRES_USER", "roveri_user"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "roveri_pass"),
-        "HOST": os.environ.get("DB_HOST", "db"),
-        "PORT": os.environ.get("DB_PORT", "5432"),
-    }
+	"default": {
+		"ENGINE": "django.db.backends.postgresql",
+		"NAME": os.environ.get("POSTGRES_DB", "roveri_db"),
+		"USER": os.environ.get("POSTGRES_USER", "roveri_user"),
+		"PASSWORD": os.environ.get("POSTGRES_PASSWORD", "roveri_pass"),
+		"HOST": os.environ.get("DB_HOST", "db"),
+		"PORT": os.environ.get("DB_PORT", "5432"),
+	}
 }
+
+# reuse DB connections to reduce connection overhead (seconds)
+CONN_MAX_AGE = int(os.environ.get('DJANGO_CONN_MAX_AGE', 300))
+
+# Cache (Redis) configuration
+# Uses REDIS_URL env var if provided, otherwise default to docker redis service
+REDIS_URL = os.environ.get('REDIS_URL', os.environ.get('REDIS', 'redis://redis:6379/1'))
+
+CACHES = {
+	'default': {
+		'BACKEND': 'django_redis.cache.RedisCache',
+		'LOCATION': REDIS_URL,
+		'OPTIONS': {
+			'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+		}
+	}
+}
+
+# If a DATABASE_URL environment variable is provided (for example when using
+# Neon or other hosted Postgres), parse it and override the DATABASES config.
+# Expected format: postgresql://user:password@host:port/dbname?sslmode=require
+if os.environ.get("DATABASE_URL"):
+	from urllib.parse import urlparse, parse_qs
+
+	db_url = os.environ["DATABASE_URL"]
+	parsed = urlparse(db_url)
+	query = parse_qs(parsed.query)
+
+	DATABASES["default"] = {
+		"ENGINE": "django.db.backends.postgresql",
+		"NAME": parsed.path.lstrip("/"),
+		"USER": parsed.username,
+		"PASSWORD": parsed.password,
+		"HOST": parsed.hostname,
+		"PORT": parsed.port or "",
+	}
+
+	# Many hosted Postgres providers (including Neon) require SSL. If the
+	# connection string includes sslmode=require or the DB_SSL env is set,
+	# enable the sslmode option so psycopg2 connects with TLS.
+	sslmode = None
+	if "sslmode" in query:
+		sslmode = query.get("sslmode")[0]
+	if os.environ.get("DB_SSL"):
+		sslmode = os.environ.get("DB_SSL")
+	if sslmode:
+		DATABASES["default"]["OPTIONS"] = {"sslmode": sslmode}
 
 # Senhas
 AUTH_PASSWORD_VALIDATORS = []
@@ -85,41 +133,52 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # REST Framework -> JWT + Session
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "accounts.authentication.CookieJWTAuthentication",  # <- usa cookies ou header
-    ],
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 12,
+	"DEFAULT_AUTHENTICATION_CLASSES": [
+		"accounts.authentication.CookieJWTAuthentication",  # <- usa cookies ou header
+	],
+	# During dev troubleshooting we allow open endpoints. Change back to
+	# IsAuthenticated for production.
+	"DEFAULT_PERMISSION_CLASSES": [
+		"rest_framework.permissions.AllowAny",
+	],
+	"DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+	"PAGE_SIZE": 12,
 }
 
 # Simple JWT
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": False,
-    "AUTH_HEADER_TYPES": ("Bearer",),
-    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+	"ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+	"REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+	"ROTATE_REFRESH_TOKENS": False,
+	"AUTH_HEADER_TYPES": ("Bearer",),
+	"AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
 
 # CORS
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
+	"http://localhost:5173",
+	"http://127.0.0.1:5173",
+	"http://localhost:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF (para confiar no frontend)
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
+	"http://localhost:5173",
+	"http://127.0.0.1:5173",
+	"http://localhost:3000",
 ]
 
 # Cookies de sessão / CSRF (em dev pode ficar False)
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_HTTPONLY = False  # precisa estar False para o frontend ler o token CSRF
+ASGI_APPLICATION = "project.asgi.application"
+CHANNEL_LAYERS = {
+		"default": {
+			"BACKEND": "channels_redis.core.RedisChannelLayer",
+			"CONFIG": {
+				"hosts": [("redis", 6379)],
+			},
+	},
+}

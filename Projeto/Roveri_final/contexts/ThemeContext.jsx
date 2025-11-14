@@ -11,9 +11,17 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
+  // Prefer stored theme; otherwise respect user system preference; default to 'light'
   const [theme, setTheme] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') || 'light';
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('theme');
+        if (stored === 'light' || stored === 'dark') return stored;
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return prefersDark ? 'dark' : 'light';
+      }
+    } catch (e) {
+      // ignore
     }
     return 'light';
   });
@@ -21,17 +29,30 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const root = document.documentElement;
+      const body = document.body;
       if (theme === 'dark') {
         root.classList.add('dark');
+        body.classList.add('dark');
+        try { root.setAttribute('data-theme', 'dark'); body.setAttribute('data-theme', 'dark'); } catch (e) {}
       } else {
         root.classList.remove('dark');
+        body.classList.remove('dark');
+        try { root.setAttribute('data-theme', 'light'); body.setAttribute('data-theme', 'light'); } catch (e) {}
       }
-      localStorage.setItem('theme', theme);
+      try {
+        localStorage.setItem('theme', theme);
+      } catch (e) {
+        // ignore storage errors
+      }
+      // small debug aid: show current theme in console
+      // you can remove this later
+      // eslint-disable-next-line no-console
+      console.debug('[Theme] applied theme=', theme, ' html.classes=', root.className);
     }
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
   return (

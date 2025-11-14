@@ -1,7 +1,7 @@
-import "./AdminPanel.css";
 // src/pages/AdminPanel.jsx
 
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import { motion } from "framer-motion";
 import api from "../services/api";
 import {
@@ -20,6 +20,7 @@ const AdminPanel = () => {
   const [users, setUsers] = useState([]);
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   // Buscar dados do backend
   useEffect(() => {
@@ -29,8 +30,9 @@ const AdminPanel = () => {
           api.get("users/"), // usando api (com JWT)
           api.get("pets/"),
         ]);
-        setUsers(usersRes.data);
-        setPets(petsRes.data);
+  // Normalize responses: DRF may return paginated objects {count, results}
+  setUsers(Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.results || []);
+  setPets(Array.isArray(petsRes.data) ? petsRes.data : petsRes.data.results || []);
       } catch (error) {
         console.error("Erro ao buscar dados:", error);
       } finally {
@@ -44,24 +46,24 @@ const AdminPanel = () => {
   // Estatísticas do dashboard
   const stats = {
     totalUsers: users.length,
-    activeUsers: users.filter((u) => u.status === "active").length,
-    totalPets: pets.length,
-    availablePets: pets.filter((p) => p.status === "available").length,
-    adoptedPets: pets.filter((p) => p.status === "adopted").length,
-    totalViews: pets.reduce((sum, pet) => sum + (pet.views || 0), 0),
+    // use is_active boolean returned by serializer
+    activeUsers: users.filter((u) => u.is_active).length,
+  totalPets: pets.length,
+    // available = published, adopted = not published (no explicit adopted flag in model)
+    availablePets: pets.filter((p) => p.is_published !== false).length,
+  adoptedPets: pets.filter((p) => p.is_published === false).length,
   };
 
   // Ações nos usuários
   const handleUserAction = async (userId, action) => {
     try {
       await api.post(`users/${userId}/${action}/`);
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === userId
-            ? { ...u, status: action === "block" ? "blocked" : "active" }
-            : u
-        )
-      );
+      setUsers((prev) => {
+        if (action === "delete") return prev.filter((u) => u.id !== userId);
+        return prev.map((u) =>
+          u.id === userId ? { ...u, is_active: action === "block" ? false : true } : u
+        );
+      });
     } catch (error) {
       console.error(`Erro ao ${action} usuário:`, error);
     }
@@ -118,11 +120,7 @@ const AdminPanel = () => {
         title="Pets Disponíveis"
         value={stats.availablePets}
       />
-      <StatCard
-        icon={<Settings className="w-6 h-6 text-gray-500" />}
-        title="Total de Visualizações"
-        value={stats.totalViews}
-      />
+      
     </div>
   );
 
@@ -144,7 +142,7 @@ const AdminPanel = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-            {user.status === "active" ? (
+            {user.is_active ? (
               <button
                 onClick={() => handleUserAction(user.id, "block")}
                 className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
@@ -159,6 +157,13 @@ const AdminPanel = () => {
                 <CheckCircle className="w-5 h-5" />
               </button>
             )}
+            <button
+              onClick={() => handleUserAction(user.id, "delete")}
+              className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+              title="Excluir usuário"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
           </div>
         </motion.div>
       ))}
@@ -167,7 +172,7 @@ const AdminPanel = () => {
 
   const PetsTab = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {pets.map((pet) => (
+  {pets.map((pet) => (
         <motion.div
           key={pet.id}
           initial={{ opacity: 0, y: 10 }}
@@ -187,18 +192,39 @@ const AdminPanel = () => {
               {pet.species} • {pet.age_text}
             </p>
             <div className="mt-4 flex space-x-2">
-              <button
-                onClick={() => handlePetAction(pet.id, "edit")}
-                className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
-              >
-                <Edit className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => handlePetAction(pet.id, "delete")}
-                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
+              {/* Only show action buttons if the current user is the owner of the pet */}
+              {user && user.id === pet.created_by ? (
+                <>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await api.post(`pets/${pet.id}/mark_registered/`);
+                        setPets((prev) => prev.filter((p) => p.id !== pet.id));
+                      } catch (err) {
+                        console.error("Erro ao marcar pet como cadastrado:", err);
+                      }
+                    }}
+                    className="p-2 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg"
+                    title="Marcar como adotado"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handlePetAction(pet.id, "edit")}
+                    className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                  >
+                    <Edit className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handlePetAction(pet.id, "delete")}
+                    className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </>
+              ) : (
+                <div className="text-sm text-gray-500 dark:text-gray-400">Somente o dono pode modificar este pet</div>
+              )}
             </div>
           </div>
         </motion.div>
@@ -227,11 +253,9 @@ const AdminPanel = () => {
 
   // --- RETORNO ---
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Painel Administrativo</h1>
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-          Painel Administrativo
-        </h1>
 
         {/* Tabs */}
         <div className="flex space-x-4 mb-8">
@@ -239,7 +263,6 @@ const AdminPanel = () => {
             { id: "overview", label: "Visão Geral" },
             { id: "users", label: "Usuários" },
             { id: "pets", label: "Pets" },
-            { id: "settings", label: "Configurações" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -259,14 +282,6 @@ const AdminPanel = () => {
         {activeTab === "overview" && <OverviewTab />}
         {activeTab === "users" && <UsersTab />}
         {activeTab === "pets" && <PetsTab />}
-        {activeTab === "settings" && (
-          <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Configurações
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300">Em breve...</p>
-          </div>
-        )}
       </div>
     </div>
   );

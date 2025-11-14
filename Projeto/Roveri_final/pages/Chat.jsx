@@ -1,85 +1,118 @@
 import "./Chat.css";
-// src/pages/Chat.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Send, ArrowLeft, Phone, Video, MoreVertical } from "lucide-react";
-import api from "../services/api"; // ✅ axios centralizado
+import api from "../services/api";
+
+const getToken = () => {
+  try {
+    // Look for the token names the app stores: accessToken (AuthContext), refreshToken, or legacy names
+    const t = localStorage.getItem("accessToken") || localStorage.getItem("access_token") || localStorage.getItem("token");
+    if (t) return t;
+  } catch (e) {
+    /* ignore */
+  }
+  const m = document.cookie.match(/(?:^|; )token=([^;]+)/);
+  return m ? m[1] : null;
+};
 
 const Chat = () => {
   const { user } = useAuth();
   const location = useLocation();
   const messagesEndRef = useRef(null);
+  const wsRef = useRef(null);
 
   const [rooms, setRooms] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
-  const [isMobileView, setIsMobileView] = useState(false);
+  const [text, setText] = useState(""); const [isMobileView, setIsMobileView] = useState(false);
 
-  // Carregar salas
   useEffect(() => {
     const loadRooms = async () => {
-      try {
-        const res = await api.get("chat/rooms/");
-        setRooms(res.data.results || res.data);
-      } catch (err) {
-        console.error("Erro ao carregar salas:", err.response?.data || err);
-      }
-    };
-    loadRooms();
+      try { const res = await api.get("chat/rooms/"); setRooms(res.data.results || res.data); } catch (err) { console.error(err); }
+    }; loadRooms();
   }, []);
 
-  // Carregar mensagens da sala ativa (com polling)
   useEffect(() => {
-    if (!activeRoom) return;
+    if (wsRef.current) { try { wsRef.current.close(); } catch {} wsRef.current = null; }
+    if (!activeRoom) { setMessages([]); return; }
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 
-    const loadMsgs = async () => {
+    // Prefer an explicit API URL from Vite env (VITE_API_URL). If not provided,
+    // fall back to localhost:8000 for backend during development.
+    let backendHost = window.location.hostname;
+    let backendPort = "";
+    try {
+      const apiUrl = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) || null;
+      if (apiUrl) {
+        const parsed = new URL(apiUrl);
+        backendHost = parsed.hostname || backendHost;
+        backendPort = parsed.port || (parsed.protocol === "https:" ? "443" : parsed.protocol === "http:" ? "80" : "");
+      } else {
+        // default dev backend port
+        backendPort = backendHost === "localhost" ? "8000" : (window.location.port || "");
+      }
+    } catch (e) {
+      backendPort = backendHost === "localhost" ? "8000" : (window.location.port || "");
+    }
+
+    const token = getToken();
+    const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
+    const wsUrl = backendPort
+      ? `${protocol}://${backendHost}:${backendPort}/ws/chat/${activeRoom.id}/${tokenQuery}`
+      : `${protocol}://${backendHost}/ws/chat/${activeRoom.id}/${tokenQuery}`;
+    const ws = new WebSocket(wsUrl); wsRef.current = ws;
+    ws.onopen = () => { (async () => { try { const res = await api.get(`chat/rooms/${activeRoom.id}/messages/`); setMessages(res.data.results || res.data); } catch (err) { console.error(err); } })(); };
+    ws.onmessage = (event) => {
       try {
-        const res = await api.get(`chat/rooms/${activeRoom.id}/messages/`);
-        setMessages(res.data.results || res.data);
+        const data = JSON.parse(event.data);
+        // ignore ack messages (sent back to sender) or errors
+        if (data && (data.saved || data.error)) return;
+
+        setMessages((prev) => {
+          // avoid duplicating messages that may already be present (same id)
+          try {
+            if (data.id && prev.some((m) => m.id === data.id)) return prev;
+          } catch (e) {
+            // ignore and append
+          }
+          return [...prev, data];
+        });
       } catch (err) {
-        console.error("Erro ao carregar mensagens:", err.response?.data || err);
+        console.error(err, event.data);
       }
     };
-
-    loadMsgs(); // primeira carga
-    const timer = setInterval(loadMsgs, 3000);
-
-    return () => clearInterval(timer);
+    ws.onerror = (err) => { console.error("WS erro", err); };
+    ws.onclose = (e) => { console.log("WS fechado", e.code, e.reason); };
+    return () => { try { ws.close(); } catch {} wsRef.current = null; };
   }, [activeRoom]);
 
-  // Enviar mensagem
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() || !activeRoom) return;
-
-    try {
-      const res = await api.post(`chat/rooms/${activeRoom.id}/messages/`, {
-        content: text,
-      });
-      setMessages((prev) => [...prev, res.data]);
-      setText("");
-    } catch (err) {
-      console.error("Erro ao enviar mensagem:", err.response?.data || err);
+    const payload = { type: "message", content: text };
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try { wsRef.current.send(JSON.stringify(payload)); setText(""); } catch (err) { try { const res = await api.post(`chat/rooms/${activeRoom.id}/messages/`, { content: text }); setMessages((prev) => [...prev, res.data]); setText(""); } catch (e) { console.error(e); } }
+    } else {
+      try {
+        const res = await api.post(`chat/rooms/${activeRoom.id}/messages/`, { content: text });
+        console.log('POST message response', res.status, res.data);
+        setMessages((prev) => [...prev, res.data]);
+        setText("");
+      } catch (err) {
+        console.error('Failed to POST message', err?.response || err.message || err);
+        // show a quick alert to help debugging
+        alert('Erro ao enviar mensagem: ' + (err?.response?.statusText || JSON.stringify(err?.response?.data) || err.message));
+      }
     }
   };
 
-  // Ajustar mobile/desktop
-  useEffect(() => {
-    const checkMobile = () => setIsMobileView(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  // Scroll automático
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Se veio de um pet (PetDetail -> navigate("/chat", { state: { roomId } }))
+  useEffect(() => { const checkMobile = () => setIsMobileView(window.innerWidth < 768); checkMobile(); window.addEventListener("resize", checkMobile); return () => window.removeEventListener("resize", checkMobile); }, []);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  // only restore active room from navigation state (when navigating into chat)
+  // do NOT auto-open a room on page reload — users should see the rooms list first
   useEffect(() => {
     if (location.state?.roomId && rooms.length > 0) {
       const r = rooms.find((room) => room.id === location.state.roomId);
@@ -87,145 +120,84 @@ const Chat = () => {
     }
   }, [location.state, rooms]);
 
-  // Lista de salas
-  const ConversationList = () => (
-    <div className="w-full md:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Conversas
-        </h2>
-      </div>
-      <div className="overflow-y-auto h-full">
-        {rooms.map((room) => (
-          <motion.div
-            key={room.id}
-            whileHover={{ backgroundColor: "rgba(59, 130, 246, 0.05)" }}
-            onClick={() => setActiveRoom(room)}
-            className={`p-4 cursor-pointer border-b border-gray-100 dark:border-gray-700 ${
-              activeRoom?.id === room.id ? "bg-blue-50 dark:bg-blue-900/20" : ""
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-gray-700 font-bold">
-                {room.pet_name?.charAt(0).toUpperCase() || "?"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {room.pet_name || `Sala ${room.id}`}
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {room.user1_username} & {room.user2_username}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-
-  // Área de mensagens
-  const ChatArea = () => (
-    <div className="flex-1 flex flex-col">
-      {/* Cabeçalho */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            {isMobileView && (
-              <button
-                onClick={() => setActiveRoom(null)}
-                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
-            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center font-bold text-gray-700">
-              {activeRoom?.pet_name?.charAt(0).toUpperCase() || "?"}
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900 dark:text-white">
-                {activeRoom?.pet_name}
-              </h3>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-              <Phone className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-              <Video className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-              <MoreVertical className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mensagens */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
-        {messages.map((msg) => (
-          <motion.div
-            key={msg.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`flex ${
-              msg.sender === user.id || msg.sender_username === user.username
-                ? "justify-end"
-                : "justify-start"
-            }`}
-          >
-            <div
-              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                msg.sender === user.id || msg.sender_username === user.username
-                  ? "bg-blue-600 text-white"
-                  : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              }`}
+  return (
+    // make the page a column that occupies the area below the site header and stays static
+    // we assume a 64px site header height; the chat area will be `calc(100vh - 64px)`
+    <div className="container mx-auto p-4 flex flex-col h-[calc(100vh-64px)] overflow-hidden">
+      <h1 className="text-2xl font-bold mb-0 h-16 flex items-center">Chat</h1>
+      <div className="chat-root flex-1 min-h-0 bg-gray-50 dark:bg-gray-900 flex rounded-md overflow-hidden">
+      {/* Rooms list */}
+  <aside className="chat-rooms w-1/3 border-r p-4 overflow-auto">
+        <h3 className="text-lg font-semibold mb-2">Salas</h3>
+        <ul>
+          {rooms.length === 0 && <li className="text-gray-500">Nenhuma sala encontrada.</li>}
+          {rooms.map((room) => (
+            <li
+              key={room.id}
+              onClick={() => setActiveRoom(room)}
+              className={`room-item mb-1 ${activeRoom?.id === room.id ? 'active' : ''}`}
             >
-              <p className="text-sm">{msg.content}</p>
-              <p
-                className={`text-xs mt-1 ${
-                  msg.sender === user.id || msg.sender_username === user.username
-                    ? "text-blue-100"
-                    : "text-gray-500 dark:text-gray-400"
-                }`}
-              >
-                {new Date(msg.timestamp).toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-            </div>
-          </motion.div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
+              {(() => {
+                // prefer pet name + pet owner username, fall back to participants or room.name
+                if (room.pet_name) {
+                  const owner = room.pet_owner_username || room.user1_username || room.user2_username || 'Desconhecido';
+                  return `${room.pet_name} — ${owner}`;
+                }
+                return room.name || `Sala ${room.id}`;
+              })()}
+            </li>
+          ))}
+        </ul>
+      </aside>
 
-      {/* Input */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-        <form onSubmit={sendMessage} className="flex space-x-2">
+      {/* Chat panel */}
+      <main className="chat-panel flex-1 p-4 flex flex-col">
+        <div className="chat-header mb-4">
+          <button onClick={() => setActiveRoom(null)} className="mr-3">←</button>
+          <h2 className="text-xl font-bold">{activeRoom ? (
+            (() => {
+              if (activeRoom.pet_name) {
+                const owner = activeRoom.pet_owner_username || activeRoom.user1_username || activeRoom.user2_username || 'Desconhecido';
+                return `${activeRoom.pet_name} — ${owner}`;
+              }
+              return activeRoom.name || `Sala ${activeRoom.id}`;
+            })()
+          ) : 'Selecione uma sala'}</h2>
+        </div>
+
+  <div className="chat-messages mb-4 overflow-auto flex-1">
+          {activeRoom ? (
+            messages.length === 0 ? (
+              <div className="text-gray-500">Sem mensagens ainda. Envie a primeira mensagem abaixo.</div>
+            ) : (
+              messages.map((m, i) => (
+                <div key={m.id || i} className="message">
+                  <div className="meta">{m.sender_username || (m.sender && m.sender.username) || 'Anônimo'}</div>
+                  <div className="bubble">{m.content || JSON.stringify(m)}</div>
+                </div>
+              ))
+            )
+          ) : (
+            <div className="text-gray-500">Nenhuma sala ativa. Clique em uma sala à esquerda para começar a conversar.</div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+  <form onSubmit={sendMessage} className="chat-input mt-2">
           <input
             type="text"
+            className="flex-1 border p-2 mr-2 rounded"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Digite sua mensagem..."
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={activeRoom ? 'Escreva uma mensagem...' : 'Selecione uma sala primeiro'}
+            disabled={!activeRoom}
           />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Send className="w-5 h-5" />
+          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded" disabled={!activeRoom || !text.trim()}>
+            Enviar
           </button>
         </form>
+      </main>
       </div>
-    </div>
-  );
-
-  return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex">
-      {(!isMobileView || !activeRoom) && <ConversationList />}
-      {(!isMobileView || activeRoom) && activeRoom && <ChatArea />}
     </div>
   );
 };

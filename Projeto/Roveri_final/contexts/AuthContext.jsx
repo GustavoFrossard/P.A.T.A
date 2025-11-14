@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
 
   const [user, setUser] = useState(initialUser);
   const [loading, setLoading] = useState(!!initialUser);
+  const [networkOffline, setNetworkOffline] = useState(false);
 
   // 🔹 Sincroniza user no localStorage
   useEffect(() => {
@@ -37,18 +38,45 @@ export const AuthProvider = ({ children }) => {
   // 🔹 Valida sessão se já existe user no localStorage
   useEffect(() => {
     const loadUser = async () => {
-      if (!initialUser) {
-        setLoading(false);
-        return;
-      }
+      // keep any existing user while we validate (prevents immediate redirect on transient network errors)
+      setNetworkOffline(false);
 
       try {
         const res = await api.get("accounts/user/");
         setUser(res.data);
+        // ensure stored user is in sync
+        try {
+          localStorage.setItem("roveri_user", JSON.stringify(res.data));
+        } catch {}
       } catch (err) {
-        console.warn("Sessão inválida:", err);
-        setUser(null);
-        localStorage.removeItem("roveri_user");
+        // persist a short error artifact so we can debug redirect issues
+        try {
+          const errObj = {
+            message: err?.message,
+            status: err?.response?.status,
+            data: err?.response?.data,
+          };
+          localStorage.setItem("auth_last_error", JSON.stringify(errObj));
+        } catch (e) {
+          // ignore storage errors
+        }
+
+        // network-level error (no response) -> mark offline but do NOT clear stored user
+        if (!err?.response) {
+          console.warn("Network error while validating session:", err);
+          setNetworkOffline(true);
+        } else if (err.response && err.response.status === 401) {
+          // auth invalid -> clear stored user/tokens
+          console.warn("Sessão inválida (401):", err);
+          setUser(null);
+          localStorage.removeItem("roveri_user");
+          // remove any stale tokens left from previous behavior
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+        } else {
+          // other HTTP error -> keep user until explicit 401
+          console.warn("HTTP error while validating session:", err);
+        }
       } finally {
         setLoading(false);
       }
@@ -63,12 +91,41 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("accounts/login/", { email, password });
 
-      // depois do login, pega dados do usuário
-      const userRes = await api.get("accounts/user/");
-      setUser(userRes.data);
+      // persist full response for debugging
+      try {
+        localStorage.setItem("auth_last_response", JSON.stringify(res.data));
+      } catch {}
+
+      // Backend should set HttpOnly cookies; we do NOT persist tokens in localStorage for security.
+
+      // depois do login, pega dados do usuário (may fail if cookies aren't present, but tokens were saved)
+      try {
+        const userRes = await api.get("accounts/user/");
+        setUser(userRes.data);
+      } catch (errUser) {
+        // save the error for debugging but don't clear tokens here
+        try {
+          const errObj = {
+            message: errUser?.message,
+            status: errUser?.response?.status,
+            data: errUser?.response?.data,
+          };
+          localStorage.setItem("auth_last_error", JSON.stringify(errObj));
+        } catch {}
+      }
 
       return { ok: true };
     } catch (e) {
+      // persist error so debug UI can show it
+      try {
+        const errObj = {
+          message: e?.message,
+          status: e?.response?.status,
+          data: e?.response?.data,
+        };
+        localStorage.setItem("auth_last_error", JSON.stringify(errObj));
+      } catch {}
+
       const errMsg =
         e?.response?.data?.detail ||
         (e?.response?.data ? JSON.stringify(e.response.data) : e.message);
@@ -82,17 +139,19 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     setLoading(true);
     try {
-      await api.post("accounts/register/", {
-        username: userData.email, // backend exige username (pode ser = email)
+      const resp = await api.post("auth/register/", {
+        first_name: userData.first_name,
+        last_name: userData.last_name,
         email: userData.email,
         password: userData.password,
         password2: userData.password,
-        name: userData.name,
-        phone: userData.phone,
-        city: userData.city,
+        phone: userData.phone || "",
+        city: userData.city || "",
       });
 
-      const res = await api.get("accounts/user/");
+      // Backend should set HttpOnly cookies; do not persist tokens in localStorage for security.
+
+      const res = await api.get("auth/user/");
       setUser(res.data);
 
       return { ok: true };
@@ -107,16 +166,27 @@ export const AuthProvider = ({ children }) => {
   // 🔒 Logout
   const logout = async () => {
     try {
+      // Tell backend to clear auth cookies
       await api.post("accounts/logout/");
-    } catch {
-      // mesmo se falhar, limpa local
-    } finally {
-      setUser(null);
-      localStorage.removeItem("roveri_user");
+    } catch (e) {
+      // ignore errors from the API call, but continue to clear local state
+      console.warn('Logout request failed, clearing local session anyway', e);
     }
+
+    // Clear all local auth artifacts so a page reload doesn't re-authenticate
+    setUser(null);
+    try {
+      localStorage.removeItem("roveri_user");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+    } catch (e) {
+      /* ignore storage errors */
+    }
+    // Optional: Force a small navigation change so UI reacts immediately
+    // window.location.href = '/';
   };
 
-  const value = { user, loading, login, register, logout };
+  const value = { user, loading, login, register, logout, networkOffline };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

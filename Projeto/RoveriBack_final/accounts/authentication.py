@@ -12,5 +12,10 @@ class CookieJWTAuthentication(JWTAuthentication):
         if raw_token is None:
             return None
 
-        validated_token = self.get_validated_token(raw_token)
-        return self.get_user(validated_token), validated_token
+        try:
+            validated_token = self.get_validated_token(raw_token)
+            return self.get_user(validated_token), validated_token
+        except Exception:
+            # If the cookie contains an invalid/expired token, don't raise —
+            # treat as unauthenticated so AllowAny endpoints (like login) still work.
+            return None

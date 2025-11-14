@@ -5,6 +5,7 @@ from .views import (
     CookieTokenObtainPairView,
     CookieTokenRefreshView,
     LogoutView,
+    UpdateProfileView,
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path("refresh/", CookieTokenRefreshView.as_view(), name="token_refresh"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("user/", UserDetailView.as_view(), name="user-detail"),
+    path("profile/update/", UpdateProfileView.as_view(), name="profile-update"),
 ]

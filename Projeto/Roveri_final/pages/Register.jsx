@@ -1,28 +1,59 @@
 // src/pages/Register.jsx
-import "./Register.css";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff } from "lucide-react";
-import api from "../services/api";
+import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff, Calendar } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 import { fadeInUp } from "../utils/motion";
 
 const Register = () => {
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     city: "",
+    birthDate: "",
     password: "",
     confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    
+    // Aplica máscara de telefone
+    if (name === 'phone') {
+      const maskedValue = applyPhoneMask(value);
+      setFormData({ ...formData, [name]: maskedValue });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+  };
+
+  // Função para aplicar máscara de telefone brasileiro
+  const applyPhoneMask = (value) => {
+    // Remove tudo que não é dígito
+    let phoneNumber = value.replace(/\D/g, '');
+    
+    // Limita a 11 dígitos
+    phoneNumber = phoneNumber.substring(0, 11);
+    
+    // Aplica a máscara
+    if (phoneNumber.length <= 10) {
+      // Formato: (XX) XXXX-XXXX
+      phoneNumber = phoneNumber.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+    } else {
+      // Formato: (XX) XXXXX-XXXX
+      phoneNumber = phoneNumber.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+    }
+    
+    return phoneNumber;
   };
 
   const handleSubmit = async (e) => {
@@ -34,25 +65,57 @@ const Register = () => {
       return;
     }
 
+    // Validar idade (18+)
+    if (!formData.birthDate) {
+      setError("Por favor, informe sua data de nascimento");
+      return;
+    }
+
+    const birthDate = new Date(formData.birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age < 18) {
+      setError("Você precisa ter pelo menos 18 anos para se cadastrar");
+      return;
+    }
+
+    setLoading(true);
     try {
-      const res = await api.post("accounts/register/", {
-        username: formData.name, // backend exige "username"
+      const result = await register({
+        first_name: formData.firstName,
+        last_name: formData.lastName,
         email: formData.email,
-        password: formData.password,
-        password2: formData.confirmPassword, // backend exige "password2"
         phone: formData.phone,
         city: formData.city,
+        password: formData.password,
       });
-
-      if (res.status === 201 || res.status === 200) {
-        navigate("/login");
+      
+      if (result.ok) {
+        // Redirecionar para a home após registro bem-sucedido
+        navigate("/");
+      } else {
+        // Tratar erros do backend
+        if (typeof result.error === 'object' && result.error.email) {
+          setError(result.error.email[0] || result.error.email);
+        } else {
+          setError(
+            typeof result.error === 'string' 
+              ? result.error 
+              : JSON.stringify(result.error)
+          );
+        }
       }
     } catch (err) {
-      console.error("Erro no registro:", err.response?.data || err.message);
-      setError(
-        err.response?.data?.detail ||
-          "Erro ao registrar usuário. Verifique os dados e tente novamente."
-      );
+      console.error("Erro no registro:", err);
+      setError("Erro ao registrar usuário. Tente novamente.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,11 +149,27 @@ const Register = () => {
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
-                name="name"
+                name="firstName"
                 type="text"
                 required
-                placeholder="Seu nome"
-                value={formData.name}
+                placeholder="Primeiro nome"
+                value={formData.firstName}
+                onChange={handleChange}
+                className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white dark:bg-gray-800 
+                text-gray-900 dark:text-white"
+              />
+            </div>
+
+            {/* Sobrenome */}
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <input
+                name="lastName"
+                type="text"
+                required
+                placeholder="Sobrenome"
+                value={formData.lastName}
                 onChange={handleChange}
                 className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white dark:bg-gray-800 
@@ -119,10 +198,11 @@ const Register = () => {
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 name="phone"
-                type="text"
-                placeholder="(11) 99999-9999"
+                type="tel"
+                placeholder="(00) 00000-0000"
                 value={formData.phone}
                 onChange={handleChange}
+                maxLength={15}
                 className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white dark:bg-gray-800 
                 text-gray-900 dark:text-white"
@@ -138,6 +218,22 @@ const Register = () => {
                 placeholder="Sua cidade"
                 value={formData.city}
                 onChange={handleChange}
+                className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white dark:bg-gray-800 
+                text-gray-900 dark:text-white"
+              />
+            </div>
+
+            {/* Data de Nascimento */}
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <input
+                name="birthDate"
+                type="date"
+                required
+                value={formData.birthDate}
+                onChange={handleChange}
+                max={new Date().toISOString().split('T')[0]}
                 className="pl-10 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white dark:bg-gray-800 
                 text-gray-900 dark:text-white"
@@ -201,11 +297,12 @@ const Register = () => {
 
           <button
             type="submit"
+            disabled={loading}
             className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium 
             rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 
-            focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+            focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Criar conta
+            {loading ? "Criando conta..." : "Criar conta"}
           </button>
         </form>
       </motion.div>

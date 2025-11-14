@@ -1,11 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Using Tailwind via CDN in index.html. To avoid editor/linter warnings
+   about unknown at-rules (@tailwind / @apply) we use plain CSS here for
+   the minimal global helpers while keeping the project using Tailwind
+   utility classes in the markup at runtime via the CDN. If you prefer a
+   production build with Tailwind processed at build-time, we can install
+   tailwindcss/postcss and enable the directives instead. */
 
-@layer base {
-  body {
-    @apply bg-white text-gray-900;
-  }
+:root { --site-bg: #ffffff; --site-text: #111827; }
+body {
+  background-color: var(--site-bg);
+  color: var(--site-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
 }
+
+/* Consolidated page-level helpers previously in individual page CSS files */
+.container { padding: 1rem; }

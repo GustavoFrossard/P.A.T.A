@@ -19,6 +19,7 @@ urlpatterns = [
 
     # App includes
     path('api/', include('pets.urls')),
+    path('api/users/', include('accounts.admin_urls')),
     path('api-auth/', include('rest_framework.urls')),
     path('api/auth/', include('accounts.urls')),
     path('api/chat/', include('chat.urls')),

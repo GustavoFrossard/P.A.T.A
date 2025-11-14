@@ -23,3 +23,9 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender.username}: {self.content[:20]}"
+    
+    class Meta:
+        indexes = [
+            # index room + timestamp to speed up queries that filter by room and order by timestamp
+            models.Index(fields=['room', 'timestamp']),
+        ]

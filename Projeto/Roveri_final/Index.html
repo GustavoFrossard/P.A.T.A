@@ -6,7 +6,101 @@
     <title>Projeto Roveri</title>
     
     <!-- Tailwind CSS via CDN -->
+    <script>
+      // Ensure Tailwind CDN uses class-based dark mode. Setting the full config object
+      // is more reliable than mutating nested properties that may not exist yet.
+      window.tailwind = window.tailwind || {};
+      window.tailwind.config = Object.assign({}, window.tailwind.config || {}, { darkMode: 'class' });
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Minimal fallback styles when using class/data-theme toggling.
+         These override common light utility classes when `data-theme="dark"` is set
+         on the document element. They are intentionally scoped and use !important
+         to ensure visual change even if Tailwind's dark variants are not present.
+    -->
+    <style>
+      :root { --site-bg: #ffffff; --site-text: #111827; }
+      [data-theme="dark"] { --site-bg: #0b1220; --site-text: #e5e7eb; }
+      html, body { background-color: var(--site-bg); color: var(--site-text); }
+
+      /* Nav and common card backgrounds */
+      [data-theme="dark"] nav { background-color: rgba(17,24,39,0.95) !important; }
+      [data-theme="dark"] .bg-white { background-color: #0b1220 !important; }
+      [data-theme="dark"] .bg-gray-50 { background-color: #071427 !important; }
+      [data-theme="dark"] .text-gray-900 { color: #e5e7eb !important; }
+      [data-theme="dark"] .text-gray-500 { color: #9ca3af !important; }
+      [data-theme="dark"] .border-gray-200 { border-color: #1f2937 !important; }
+      [data-theme="dark"] .bg-gray-100 { background-color: #0f1724 !important; }
+      [data-theme="dark"] .dark\:bg-gray-900 { background-color: #0b1220 !important; }
+  /* Additional overrides for common utilities so more components flip to dark */
+  [data-theme="dark"] .text-gray-900 { color: #f3f4f6 !important; }
+  [data-theme="dark"] .text-gray-700 { color: #d1d5db !important; }
+  [data-theme="dark"] .text-gray-600 { color: #9ca3af !important; }
+  [data-theme="dark"] .text-gray-500 { color: #9ca3af !important; }
+  [data-theme="dark"] .border-gray-300 { border-color: #374151 !important; }
+  [data-theme="dark"] .border-gray-400 { border-color: #4b5563 !important; }
+  [data-theme="dark"] .shadow, [data-theme="dark"] .shadow-lg { box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
+  [data-theme="dark"] .bg-white\/95 { background-color: rgba(15, 23, 42, 0.95) !important; }
+  [data-theme="dark"] .bg-white\/90 { background-color: rgba(15, 23, 42, 0.9) !important; }
+  [data-theme="dark"] .bg-white\/50 { background-color: rgba(15, 23, 42, 0.5) !important; }
+  /* Hero gradient fallback when CDN didn't generate dark variants */
+  [data-theme="dark"] .hero { background: linear-gradient(135deg, #0b1220 0%, #071327 100%) !important; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/main.jsx"></script>
+  </body>
+</html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Projeto Roveri</title>
+    
+    <!-- Tailwind CSS via CDN -->
+    <!-- Configure CDN to use class-based dark mode so the app can toggle theme by adding/removing the `dark` class on <html> -->
+    <script>
+      // Ensure Tailwind CDN uses class-based dark mode. Setting the full config object
+      // is more reliable than mutating nested properties that may not exist yet.
+      window.tailwind = window.tailwind || {};
+      window.tailwind.config = Object.assign({}, window.tailwind.config || {}, { darkMode: 'class' });
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Minimal fallback styles when using class/data-theme toggling.
+         These override common light utility classes when `data-theme="dark"` is set
+         on the document element. They are intentionally scoped and use !important
+         to ensure visual change even if Tailwind's dark variants are not present.
+    -->
+    <style>
+      :root { --site-bg: #ffffff; --site-text: #111827; }
+      [data-theme="dark"] { --site-bg: #0b1220; --site-text: #e5e7eb; }
+      html, body { background-color: var(--site-bg); color: var(--site-text); }
+
+      /* Nav and common card backgrounds */
+      [data-theme="dark"] nav { background-color: rgba(17,24,39,0.95) !important; }
+      [data-theme="dark"] .bg-white { background-color: #0b1220 !important; }
+      [data-theme="dark"] .bg-gray-50 { background-color: #071427 !important; }
+      [data-theme="dark"] .text-gray-900 { color: #e5e7eb !important; }
+      [data-theme="dark"] .text-gray-500 { color: #9ca3af !important; }
+      [data-theme="dark"] .border-gray-200 { border-color: #1f2937 !important; }
+      [data-theme="dark"] .bg-gray-100 { background-color: #0f1724 !important; }
+      [data-theme="dark"] .dark\\:bg-gray-900 { background-color: #0b1220 !important; }
+  /* Additional overrides for common utilities so more components flip to dark */
+  [data-theme="dark"] .text-gray-900 { color: #f3f4f6 !important; }
+  [data-theme="dark"] .text-gray-700 { color: #d1d5db !important; }
+  [data-theme="dark"] .text-gray-600 { color: #9ca3af !important; }
+  [data-theme="dark"] .text-gray-500 { color: #9ca3af !important; }
+  [data-theme="dark"] .border-gray-300 { border-color: #374151 !important; }
+  [data-theme="dark"] .border-gray-400 { border-color: #4b5563 !important; }
+  [data-theme="dark"] .shadow, [data-theme="dark"] .shadow-lg { box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
+  [data-theme="dark"] .bg-white\/95 { background-color: rgba(15, 23, 42, 0.95) !important; }
+  [data-theme="dark"] .bg-white\/90 { background-color: rgba(15, 23, 42, 0.9) !important; }
+  [data-theme="dark"] .bg-white\/50 { background-color: rgba(15, 23, 42, 0.5) !important; }
+  /* Hero gradient fallback when CDN didn't generate dark variants */
+  [data-theme="dark"] .hero { background: linear-gradient(135deg, #0b1220 0%, #071327 100%) !important; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

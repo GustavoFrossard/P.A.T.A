@@ -1,10 +1,10 @@
-import "./Home.css";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Heart, Search, MessageCircle, Shield } from "lucide-react";
 import { fadeInUp } from "../utils/motion";
 import api from "../services/api"; // ✅ axios centralizado
+import { useAuth } from "../contexts/AuthContext";
 
 const Home = () => {
   const [stats, setStats] = useState({
@@ -39,19 +39,29 @@ const Home = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await api.get("stats/"); // ✅ agora via axios centralizado
-        setStats(res.data);
+        // Buscar usuários e pets e calcular as métricas localmente
+        const [usersRes, petsRes] = await Promise.all([api.get("users/"), api.get("pets/")]);
+
+        const usersData = Array.isArray(usersRes.data) ? usersRes.data : usersRes.data?.results || [];
+        const petsData = Array.isArray(petsRes.data) ? petsRes.data : petsRes.data?.results || [];
+
+        const petsAdotados = petsData.filter((p) => p.is_published === false).length;
+        const usuariosAtivos = usersData.filter((u) => u.is_active).length;
+        const cidadesAtendidas = Array.from(new Set(petsData.map((p) => p.city || p.location).filter(Boolean))).length;
+
+        setStats({ petsAdotados, usuariosAtivos, cidadesAtendidas });
       } catch (err) {
         console.error("Erro ao buscar estatísticas:", err.response?.data || err);
       }
     };
     fetchStats();
   }, []);
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-emerald-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 py-20">
+  <section className="hero bg-gradient-to-br from-emerald-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeInUp} className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
@@ -62,19 +72,21 @@ const Home = () => {
               A maior comunidade de adoção de pets do Brasil. Encontre seu novo melhor amigo
               ou ajude um animal a encontrar uma família amorosa.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className={`flex flex-col sm:flex-row gap-4 ${user ? 'justify-center' : 'justify-center'}`}>
               <Link
                 to="/pets"
                 className="bg-emerald-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-emerald-700 transition-colors"
               >
                 Ver Pets Disponíveis
               </Link>
-              <Link
-                to="/register"
-                className="bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 px-8 py-3 rounded-lg text-lg font-semibold border-2 border-emerald-600 hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Cadastrar-se
-              </Link>
+              {!user && (
+                <Link
+                  to="/register"
+                  className="bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 px-8 py-3 rounded-lg text-lg font-semibold border-2 border-emerald-600 hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cadastrar-se
+                </Link>
+              )}
             </div>
           </motion.div>
         </div>
@@ -128,31 +140,33 @@ const Home = () => {
             </motion.div>
             <motion.div {...fadeInUp} transition={{ delay: 0.2 }}>
               <div className="text-4xl font-bold text-white mb-2">{stats.cidadesAtendidas}+</div>
-              <div className="text-emerald-100">Cidades Atendidas</div>
+              <div className="text-emerald-100">Cidades com Pets</div>
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-white dark:bg-gray-900">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div {...fadeInUp}>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
-              Pronto para Fazer a Diferença?
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-              Junte-se à nossa comunidade e ajude a conectar pets com famílias amorosas.
-            </p>
-            <Link
-              to="/register"
-              className="bg-emerald-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-emerald-700 transition-colors inline-block"
-            >
-              Começar Agora
-            </Link>
-          </motion.div>
-        </div>
-      </section>
+      {!user && (
+        <section className="py-20 bg-white dark:bg-gray-900">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <motion.div {...fadeInUp}>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
+                Pronto para Fazer a Diferença?
+              </h2>
+              <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+                Junte-se à nossa comunidade e ajude a conectar pets com famílias amorosas.
+              </p>
+              <Link
+                to="/register"
+                className="bg-emerald-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-emerald-700 transition-colors inline-block"
+              >
+                Começar Agora
+              </Link>
+            </motion.div>
+          </div>
+        </section>
+      )}
     </div>
   );
 };
