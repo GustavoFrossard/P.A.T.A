@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const DEFAULT_BASE = "http://localhost:8000/api/";
+const DEFAULT_BASE = "https://pata2.vercel.app/api/";
 const apiBase = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) || process.env.REACT_APP_API_URL || DEFAULT_BASE;
 
 const api = axios.create({
@@ -33,7 +33,7 @@ api.interceptors.response.use(
       original._retry = true;
       try {
         // Ask the backend to refresh using cookie (backend reads refresh_token cookie)
-        const resp = await axios.post("http://localhost:8000/api/token/refresh/", {}, { withCredentials: true });
+        const resp = await axios.post("https://pata2.vercel.app/api/token/refresh/", {}, { withCredentials: true });
 
         const newAccess = resp.data.access;
         if (newAccess) {
