@@ -44,11 +44,11 @@ class RegisterView(generics.CreateAPIView):
         }
         response = Response(response_data, status=status.HTTP_201_CREATED)
 
-        # 🔹 salva tokens em cookies HttpOnly (SameSite=None; Secure=True para cross-origin)
+        # 🔹 Cookies SameSite=None; Secure=True para cross-origin (httponly=False para mobile)
         response.set_cookie(
             key="access_token",
             value=access_token,
-            httponly=True,
+            httponly=False,  # False para funcionar em mobile cross-origin
             samesite="None",
             secure=True,
             max_age=60 * 60,
@@ -56,7 +56,7 @@ class RegisterView(generics.CreateAPIView):
         response.set_cookie(
             key="refresh_token",
             value=refresh_token,
-            httponly=True,
+            httponly=False,  # False para funcionar em mobile cross-origin
             samesite="None",
             secure=True,
             max_age=7 * 24 * 60 * 60,
@@ -89,7 +89,7 @@ class CookieTokenObtainPairView(APIView):
         response.set_cookie(
             "access_token",
             data["access"],
-            httponly=True,
+            httponly=False,  # False para funcionar em mobile cross-origin
             samesite="None",
             secure=True,
             max_age=60 * 60,
@@ -97,7 +97,7 @@ class CookieTokenObtainPairView(APIView):
         response.set_cookie(
             "refresh_token",
             data["refresh"],
-            httponly=True,
+            httponly=False,  # False para funcionar em mobile cross-origin
             samesite="None",
             secure=True,
             max_age=7 * 24 * 60 * 60,
@@ -135,7 +135,7 @@ class CookieTokenRefreshView(APIView):
             response.set_cookie(
                 "access_token",
                 access,
-                httponly=True,
+                httponly=False,  # False para funcionar em mobile cross-origin
                 samesite="None",
                 secure=True,
                 max_age=60 * 60,
