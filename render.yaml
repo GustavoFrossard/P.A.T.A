@@ -16,15 +16,10 @@ services:
         generateValue: true
       - key: DEBUG
         value: "False"
-      - key: REDIS_URL
-        fromService:
-          name: roveri-redis
-          type: redis
-          property: connectionString
       - key: DATABASE_URL
         fromService:
           name: roveri-db
-          type: postgres
+          type: pserv
           property: connectionString
       - key: MEDIA_ROOT
         value: /var/media
@@ -36,8 +31,6 @@ services:
       name: media-disk
       mountPath: /var/media
       sizeGB: 1
-    postdeploy:
-      - python manage.py migrate
 
   - type: web
     name: roveri-frontend
@@ -52,7 +45,5 @@ services:
 databases:
   - name: roveri-db
     plan: free
-
-redis:
-  - name: roveri-redis
-    plan: free
+    databaseName: roveridb
+    user: roveriuser
