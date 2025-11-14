@@ -2,7 +2,7 @@ services:
   - type: web
     name: roveri-backend
     env: python
-    rootDir: RoveriBack_final
+    rootDir: Projeto/RoveriBack_final
     buildCommand: pip install -r requirements.txt
     startCommand: daphne -b 0.0.0.0 -p $PORT project.asgi:application
     autoDeploy: true
@@ -41,7 +41,7 @@ services:
 
   - type: static
     name: roveri-frontend
-    rootDir: Roveri_final
+    rootDir: Projeto/Roveri_final
     buildCommand: npm ci && npm run build
     publishPath: dist
     envVars:
