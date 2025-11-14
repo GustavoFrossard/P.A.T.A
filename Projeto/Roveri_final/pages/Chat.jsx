@@ -115,7 +115,11 @@ const Chat = () => {
               className={`room-item mb-1 ${activeRoom?.id === room.id ? 'active' : ''}`}
             >
               {(() => {
-                // prefer pet name + pet owner username, fall back to participants or room.name
+                // Mostra o nome do pet e o nome do outro usuário na conversa
+                if (room.pet_name && room.other_user_username) {
+                  return `${room.pet_name} — ${room.other_user_full_name || room.other_user_username}`;
+                }
+                // Fallback para formato antigo
                 if (room.pet_name) {
                   const owner = room.pet_owner_username || room.user1_username || room.user2_username || 'Desconhecido';
                   return `${room.pet_name} — ${owner}`;
@@ -133,6 +137,11 @@ const Chat = () => {
           <button onClick={() => setActiveRoom(null)} className="mr-3">←</button>
           <h2 className="text-xl font-bold">{activeRoom ? (
             (() => {
+              // Mostra o nome do pet e o nome do outro usuário na conversa
+              if (activeRoom.pet_name && activeRoom.other_user_username) {
+                return `${activeRoom.pet_name} — ${activeRoom.other_user_full_name || activeRoom.other_user_username}`;
+              }
+              // Fallback para formato antigo
               if (activeRoom.pet_name) {
                 const owner = activeRoom.pet_owner_username || activeRoom.user1_username || activeRoom.user2_username || 'Desconhecido';
                 return `${activeRoom.pet_name} — ${owner}`;
