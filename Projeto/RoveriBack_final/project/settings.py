@@ -141,6 +141,10 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', ''),
 }
 
+# Debug: log cloudinary config (will show in Vercel logs)
+print(f"DEBUG: CLOUDINARY_CLOUD_NAME = {os.environ.get('CLOUDINARY_CLOUD_NAME', 'NOT SET')}")
+print(f"DEBUG: DEFAULT_FILE_STORAGE will be = {'cloudinary_storage.storage.MediaCloudinaryStorage' if os.environ.get('CLOUDINARY_CLOUD_NAME') else 'FileSystemStorage'}")
+
 # Use Cloudinary for media files if configured (production), else use local storage
 if os.environ.get('CLOUDINARY_CLOUD_NAME'):
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
