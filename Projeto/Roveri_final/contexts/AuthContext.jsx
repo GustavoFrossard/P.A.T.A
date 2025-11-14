@@ -96,9 +96,9 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("auth_last_response", JSON.stringify(res.data));
       } catch {}
 
-      // Backend should set HttpOnly cookies; we do NOT persist tokens in localStorage for security.
+      // Backend sets HttpOnly cookies with tokens (cross-origin via SameSite=None; Secure=true)
 
-      // depois do login, pega dados do usuário (may fail if cookies aren't present, but tokens were saved)
+      // depois do login, pega dados do usuário
       try {
         const userRes = await api.get("accounts/user/");
         setUser(userRes.data);
@@ -149,7 +149,7 @@ export const AuthProvider = ({ children }) => {
         city: userData.city || "",
       });
 
-      // Backend should set HttpOnly cookies; do not persist tokens in localStorage for security.
+      // Backend sets HttpOnly cookies with tokens
 
       const res = await api.get("auth/user/");
       setUser(res.data);
