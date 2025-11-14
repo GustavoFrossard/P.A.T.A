@@ -21,6 +21,8 @@ INSTALLED_APPS = [
 	"django.contrib.sessions",
 	"django.contrib.messages",
 	"django.contrib.staticfiles",
+	"cloudinary_storage",
+	"cloudinary",
 	"rest_framework",
 	"corsheaders",
 	"pets",
@@ -132,9 +134,21 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles_build" / "static"
 
-# In Render, use a disk (MEDIA_ROOT) for uploads; default to project media folder locally
-MEDIA_URL = "/media/"
-MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
+# Cloudinary configuration for media files (works on Vercel)
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+    'API_KEY': os.environ.get('CLOUDINARY_API_KEY', ''),
+    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', ''),
+}
+
+# Use Cloudinary for media files if configured (production), else use local storage
+if os.environ.get('CLOUDINARY_CLOUD_NAME'):
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    MEDIA_URL = '/media/'  # Cloudinary handles the actual URL
+else:
+    # Local development: use disk storage
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
