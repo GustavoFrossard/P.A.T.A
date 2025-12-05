@@ -34,7 +34,7 @@ const Navbar = () => {
           <Link to="/" className="flex items-center space-x-2">
             <Heart className="h-8 w-8 text-emerald-600" />
             <span className="text-xl font-bold text-gray-900 dark:text-white">
-              PATA
+              P.A.T.A
             </span>
           </Link>
 
