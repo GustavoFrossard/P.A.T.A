@@ -16,3 +16,59 @@ body {
 
 /* Consolidated page-level helpers previously in individual page CSS files */
 .container { padding: 1rem; }
+
+/* ========================================
+   Chat Styles
+   ======================================== */
+
+/* Make chat root fill the viewport and prevent the page from scrolling */
+.chat-root {
+	height: 100vh; /* full viewport height */
+	display: flex;
+	overflow: hidden; /* prevent body scroll */
+	background-color: #f9fafb; /* light gray similar to Tailwind bg-gray-50 */
+}
+
+/* Rooms (left column) */
+.chat-rooms {
+	width: 33%;
+	min-width: 220px;
+	border-right: 1px solid #e5e7eb; /* Tailwind gray-200 */
+	padding: 1rem;
+	overflow-y: auto; /* scroll only rooms if they overflow */
+}
+
+/* Main chat panel */
+.chat-panel {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden; /* keep input fixed and messages area scrollable */
+	padding: 1rem;
+}
+
+.chat-header {
+	display: flex;
+	align-items: center;
+	margin-bottom: 0.5rem;
+}
+
+.chat-messages {
+	flex: 1 1 auto;
+	overflow-y: auto; /* scroll messages only */
+	padding-right: 0.5rem;
+}
+
+.chat-input {
+	margin-top: 0.75rem;
+	display: flex;
+	gap: 0.5rem;
+}
+
+.room-item { cursor: pointer; padding: 0.5rem; border-radius: 6px; }
+.room-item:hover { background: #f3f4f6; }
+.room-item.active { background: #e5e7eb; }
+
+.message { margin-bottom: 0.75rem; }
+.message .meta { font-size: 0.85rem; color: #6b7280; }
+.message .bubble { background: white; padding: 0.5rem; border-radius: 6px; display: inline-block; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
