@@ -171,7 +171,8 @@ const Chat = () => {
   <form onSubmit={sendMessage} className="chat-input mt-2">
           <input
             type="text"
-            className="flex-1 border p-2 mr-2 rounded"
+            className="flex-1 border p-2 mr-2 rounded bg-white text-black placeholder-gray-400 force-light-input"
+            style={{ backgroundColor: '#ffffff', color: '#000000' }}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={activeRoom ? 'Escreva uma mensagem...' : 'Selecione uma sala primeiro'}
