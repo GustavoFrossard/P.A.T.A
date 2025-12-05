@@ -111,3 +111,17 @@ body.dark .chat-messages .message .meta {
 body.dark .chat-header h2 {
   color: #ffffff !important;
 }
+
+/* Force certain inputs to keep light appearance even when a global
+	 [data-theme="dark"] stylesheet flips utility classes with !important.
+	 Use the class `force-light-input` on inputs that must stay white/black. */
+[data-theme="dark"] input.force-light-input,
+body.dark input.force-light-input {
+	background-color: #ffffff !important;
+	color: #000000 !important;
+	caret-color: #000000 !important;
+}
+[data-theme="dark"] input.force-light-input::placeholder,
+body.dark input.force-light-input::placeholder {
+	color: #6b7280 !important; /* placeholder-gray-500 */
+}
