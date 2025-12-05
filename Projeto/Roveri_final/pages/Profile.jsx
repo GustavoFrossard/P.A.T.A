@@ -282,7 +282,8 @@ const ProfileTab = ({ user, editing, setEditing }) => {
               name="first_name"
               value={formData.first_name}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded bg-white text-black placeholder-gray-400" 
+              className="w-full p-2 border rounded bg-white text-black placeholder-gray-600" 
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
             />
           </div>
           <div>
@@ -294,7 +295,8 @@ const ProfileTab = ({ user, editing, setEditing }) => {
               name="last_name"
               value={formData.last_name}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded bg-white text-black placeholder-gray-400" 
+              className="w-full p-2 border rounded bg-white text-black placeholder-gray-600" 
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
             />
           </div>
           <div>
@@ -306,7 +308,8 @@ const ProfileTab = ({ user, editing, setEditing }) => {
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded bg-white text-black placeholder-gray-400" 
+              className="w-full p-2 border rounded bg-white text-black placeholder-gray-600" 
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
             />
           </div>
           <div>
@@ -320,7 +323,8 @@ const ProfileTab = ({ user, editing, setEditing }) => {
               onChange={handleInputChange}
               placeholder="(00) 00000-0000"
               maxLength={15}
-              className="w-full p-2 border rounded bg-white text-black placeholder-gray-400" 
+              className="w-full p-2 border rounded bg-white text-black placeholder-gray-600" 
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
             />
           </div>
           <div>
@@ -333,7 +337,8 @@ const ProfileTab = ({ user, editing, setEditing }) => {
               value={formData.city}
               onChange={handleInputChange}
               placeholder="Ex: São Paulo"
-              className="w-full p-2 border rounded bg-white text-black placeholder-gray-400" 
+              className="w-full p-2 border rounded bg-white text-black placeholder-gray-600" 
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
             />
           </div>
           <div className="flex space-x-2">
