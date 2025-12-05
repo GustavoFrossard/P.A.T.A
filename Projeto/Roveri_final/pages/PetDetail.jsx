@@ -7,8 +7,6 @@ import {
   MapPin,
   Heart,
   MessageCircle,
-  Shield,
-  Award,
 } from "lucide-react";
 import api from "../services/api";
 
@@ -145,7 +143,7 @@ const PetDetail = () => {
               </h1>
               <div className="flex items-center text-gray-600 dark:text-gray-400 mb-4">
                 <MapPin className="w-4 h-4 mr-1" />
-                <span>{pet.location || "Local não informado"}</span>
+                <span>{pet.city || pet.location || "Local não informado"}</span>
               </div>
             </div>
 
@@ -175,44 +173,9 @@ const PetDetail = () => {
                   {pet.age_text || "Não informado"}
                 </p>
               </div>
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Porte
-                </h3>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white capitalize">
-                  {pet.size || "Não informado"}
-                </p>
-              </div>
             </div>
 
-            {/* Status de saúde */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                Status de Saúde
-              </h3>
-              <div className="flex space-x-4">
-                <div
-                  className={`flex items-center px-3 py-1 rounded-full text-sm ${
-                    pet.vaccinated
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                  }`}
-                >
-                  <Shield className="w-4 h-4 mr-1" />
-                  {pet.vaccinated ? "Vacinado" : "Não vacinado"}
-                </div>
-                <div
-                  className={`flex items-center px-3 py-1 rounded-full text-sm ${
-                    pet.neutered
-                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                      : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                  }`}
-                >
-                  <Award className="w-4 h-4 mr-1" />
-                  {pet.neutered ? "Castrado" : "Não castrado"}
-                </div>
-              </div>
-            </div>
+            {/* Status de saúde removed per design — not shown on pet detail */}
 
             {/* Botão de contato */}
             <div className="space-y-2">
