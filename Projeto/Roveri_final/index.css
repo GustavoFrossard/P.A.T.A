@@ -103,7 +103,7 @@ body.dark .message .bubble {
 /* Message meta (sender name / timestamp) should also remain readable */
 .dark .chat-messages .message .meta,
 body.dark .chat-messages .message .meta {
-	color: #000000 !important;
+	color: #ffffff !important; /* sender names above messages white in dark mode */
 }
 
 /* Chat header title above messages should stay white in dark mode */
