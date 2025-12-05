@@ -80,9 +80,15 @@ body {
 	 <html> and body.dark. */
 
 /* Selected room name (left column) stays black in dark mode */
-.dark .chat-rooms .room-item.active .room-name,
-body.dark .chat-rooms .room-item.active .room-name {
+.dark .chat-rooms .room-item.active,
+body.dark .chat-rooms .room-item.active {
 	color: #000000 !important;
+}
+
+/* Non-active room items should be light in dark mode */
+.dark .chat-rooms .room-item,
+body.dark .chat-rooms .room-item {
+	color: #cbd5e1; /* gray-300 */
 }
 
 /* Messages in the chat panel: bubble background kept white and text
@@ -98,4 +104,10 @@ body.dark .message .bubble {
 .dark .chat-messages .message .meta,
 body.dark .chat-messages .message .meta {
 	color: #000000 !important;
+}
+
+/* Chat header title above messages should stay white in dark mode */
+.dark .chat-header h2,
+body.dark .chat-header h2 {
+  color: #ffffff !important;
 }
