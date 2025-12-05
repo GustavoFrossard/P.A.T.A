@@ -72,3 +72,30 @@ body {
 .message { margin-bottom: 0.75rem; }
 .message .meta { font-size: 0.85rem; color: #6b7280; }
 .message .bubble { background: white; padding: 0.5rem; border-radius: 6px; display: inline-block; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+
+/* Dark mode adjustments: keep chat text and room names black */
+/* Dark mode adjustments: only force black for chat messages and the
+	 selected room name. Other chat text follows the global dark-mode
+	 color (typically light). Support both Tailwind-style .dark on
+	 <html> and body.dark. */
+
+/* Selected room name (left column) stays black in dark mode */
+.dark .chat-rooms .room-item.active .room-name,
+body.dark .chat-rooms .room-item.active .room-name {
+	color: #000000 !important;
+}
+
+/* Messages in the chat panel: bubble background kept white and text
+	 forced to black for readability in dark mode */
+.dark .message .bubble,
+body.dark .message .bubble {
+	background: #ffffff;
+	color: #000000 !important;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+/* Message meta (sender name / timestamp) should also remain readable */
+.dark .chat-messages .message .meta,
+body.dark .chat-messages .message .meta {
+	color: #000000 !important;
+}
