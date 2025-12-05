@@ -245,6 +245,10 @@ const PetDetail = () => {
               {pet.created_by_username}
             </p>
             <p className="text-gray-600 dark:text-gray-300">
+              <span className="font-medium">Email:</span>{" "}
+              {pet.created_by_email || "Não informado"}
+            </p>
+            <p className="text-gray-600 dark:text-gray-300">
               <span className="font-medium">Anúncio publicado em:</span>{" "}
               {new Date(pet.created_at).toLocaleDateString("pt-BR")}
             </p>

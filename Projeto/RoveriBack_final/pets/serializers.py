@@ -6,6 +6,9 @@ class PetCardSerializer(serializers.ModelSerializer):
     created_by_username = serializers.CharField(
         source="created_by.username", read_only=True
     )
+    created_by_email = serializers.EmailField(
+        source="created_by.email", read_only=True
+    )
     image_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -22,6 +25,7 @@ class PetCardSerializer(serializers.ModelSerializer):
             "image_url",
             "created_by",
             "created_by_username",
+            "created_by_email",
             "is_published",
             "created_at",
             "updated_at",
@@ -31,6 +35,7 @@ class PetCardSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "created_by_username",
+            "created_by_email",
             "image_url",
         ]
 
