@@ -282,7 +282,7 @@ const ProfileTab = ({ user, editing, setEditing }) => {
               name="first_name"
               value={formData.first_name}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-gray-900" 
             />
           </div>
           <div>
@@ -294,7 +294,7 @@ const ProfileTab = ({ user, editing, setEditing }) => {
               name="last_name"
               value={formData.last_name}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-gray-900" 
             />
           </div>
           <div>
@@ -306,7 +306,7 @@ const ProfileTab = ({ user, editing, setEditing }) => {
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-gray-900" 
             />
           </div>
           <div>
@@ -320,7 +320,7 @@ const ProfileTab = ({ user, editing, setEditing }) => {
               onChange={handleInputChange}
               placeholder="(00) 00000-0000"
               maxLength={15}
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-gray-900" 
             />
           </div>
           <div>
@@ -333,7 +333,7 @@ const ProfileTab = ({ user, editing, setEditing }) => {
               value={formData.city}
               onChange={handleInputChange}
               placeholder="Ex: São Paulo"
-              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 text-gray-900" 
             />
           </div>
           <div className="flex space-x-2">
@@ -347,7 +347,7 @@ const ProfileTab = ({ user, editing, setEditing }) => {
             <button
               type="button"
               onClick={() => setEditing(false)}
-              className="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
+              className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition-colors"
             >
               Cancelar
             </button>
