@@ -39,12 +39,21 @@ const Home = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Busca estatísticas do endpoint público
-        const res = await api.get("stats/");
+        // Busca estatísticas públicas e também os pets para garantir
+        // que o número de "petsAdotados" seja calculado localmente
+        // da mesma forma que em AdminPanel (is_published === false).
+        const [statsRes, petsRes] = await Promise.all([
+          api.get("stats/"),
+          api.get("pets/"),
+        ]);
+
+        const pets = Array.isArray(petsRes.data) ? petsRes.data : petsRes.data.results || [];
+        const adoptedCount = pets.filter((p) => p.is_published === false).length;
+
         setStats({
-          petsAdotados: res.data.petsAdotados || 0,
-          usuariosAtivos: res.data.usuariosAtivos || 0,
-          cidadesAtendidas: res.data.cidadesAtendidas || 0,
+          petsAdotados: adoptedCount,
+          usuariosAtivos: statsRes.data.usuariosAtivos || 0,
+          cidadesAtendidas: statsRes.data.cidadesAtendidas || 0,
         });
       } catch (err) {
         console.error("Erro ao buscar estatísticas:", err.response?.data || err);
