@@ -157,6 +157,30 @@ else:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
 
+# Django 4.2+ uses the STORAGES mapping – make it explicit so deployments
+# (Vercel / serverless) never fall back to a filesystem-backed storage that
+# tries to create folders under /var/task (read-only).
+if os.environ.get('VERCEL') or os.environ.get('CLOUDINARY_CLOUD_NAME'):
+	STORAGES = {
+		"default": {
+			"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+		},
+		"staticfiles": {
+			"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+		},
+	}
+else:
+	# local/dev: keep filesystem storage and explicit location
+	STORAGES = {
+		"default": {
+			"BACKEND": "django.core.files.storage.FileSystemStorage",
+			"OPTIONS": {"location": str(MEDIA_ROOT if 'MEDIA_ROOT' in globals() else BASE_DIR / 'media')},
+		},
+		"staticfiles": {
+			"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+		},
+	}
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # REST Framework -> JWT + Session
